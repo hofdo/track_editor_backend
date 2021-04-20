@@ -4,7 +4,12 @@ const bodyParser = require('body-parser')
 const WebSocket = require('ws');
 const mqtt = require('mqtt');
 const emitter = require('events').EventEmitter
+const fs = require('fs')
+const {createCanvas, loadImage} = require('canvas')
 const gm = require('gm')
+
+const HEIGHT_IMAGE = 2146
+const WIDTH_IMAGE = 2146
 
 let app = express();
 let parser = bodyParser.json()
@@ -69,8 +74,26 @@ app.get('/image', function (req, res) {
     res.sendFile(uri)
 })
 
-app.post("/export", parser,(req, res) => {
+
+app.post("/export", parser, (req, res) => {
     let grid_items = req.body
+    let rows = req.query["maxRows"]
+    let cols = req.query["maxCols"]
+    let data = drawImage(grid_items, rows, cols)
+    data.then((dat) => {
+
+        const im = dat.toDataURL().split(",")[1];
+
+        const img = Buffer.from(im, 'base64');
+
+        res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Content-Length': img.length
+        });
+
+        res.end(img);
+    })
+
 })
 
 let server = app.listen(8081, function () {
@@ -79,7 +102,7 @@ let server = app.listen(8081, function () {
     console.log("Example app listening at http://%s:%s", host, port)
 })
 
-function getImgUri(type){
+function getImgUri(type) {
     let uri = ""
     switch (type) {
         case "straight":
@@ -94,5 +117,47 @@ function getImgUri(type){
     }
     return uri
 }
+
+async function drawImage(grid_items, rows, cols) {
+    let canvas = createCanvas(WIDTH_IMAGE * rows, HEIGHT_IMAGE * cols)
+    let ctx = canvas.getContext('2d')
+
+    const promise = grid_items.map(grid => {
+        let uri = getImgUri(grid.type)
+        let degree
+
+        switch (grid.item.degree.toString()) {
+            case "0":
+                degree = 0
+                break
+            case "90":
+                degree = Math.PI / 2
+                break
+            case "180":
+                degree = Math.PI
+                break
+            case "270":
+                degree = 3 * Math.PI / 2
+                break
+        }
+
+        loadImage(uri).then((image) => {
+            ctx.save()
+            ctx.translate(((grid.item.x + 1) * WIDTH_IMAGE) - 1073, ((grid.item.y + 1) * HEIGHT_IMAGE) - 1073);
+            ctx.rotate(degree);
+            ctx.drawImage(image, -1073, -1073, WIDTH_IMAGE, HEIGHT_IMAGE)
+            ctx.restore()
+        })
+    })
+
+    await Promise.all(promise)
+    console.log("done")
+    console.log("Canvas width: " + canvas.width)
+    console.log("Canvas height: " + canvas.height)
+    return canvas
+    //const buffer = canvas.toBuffer('image/png')
+    //fs.writeFileSync('./image.png', buffer)
+}
+
 
 
