@@ -16,6 +16,8 @@ let parser = bodyParser.json()
 app.use(cors())
 let em = new emitter()
 
+let cars = []
+
 const wss = new WebSocket.Server({port: 8082});
 
 //MQTT
@@ -33,25 +35,8 @@ let client = mqtt.connect('mqtt://192.168.1.121', {
     }
 });
 
-client.on("message", function (topic, message) {
-    let msg = message.toString()
-    em.emit('mqtt_msg_arrived')
-})
-
-//Websocket
-wss.on('connection', function connection(ws) {
-    ws.on('message', function incoming(message) {
-        console.log('received: %s', message);
-    });
-
-    em.on('mqtt_msg_arrived', function () {
-        ws.send(JSON.stringify("wat"))
-    })
-});
-
 client.on("connect", function () {
-    client.subscribe("Test")
-    /*
+    //client.subscribe("Anki/poc/#")
     client.publish('Anki/Host/' + 'test12345' + '/S/HostStatus', JSON.stringify({
         "value": true
     }), {
@@ -60,10 +45,92 @@ client.on("connect", function () {
     })
     client.subscribe("Anki/Host/+/E/#");
     client.subscribe("Anki/Host/+/S/#");
-    client.subscribe("Anki/Car/+/E/#");
-    client.subscribe("Anki/Car/+/S/#");
+    client.subscribe("Anki/Car/+/E/Messages/#");
+    client.subscribe("Anki/Car/+/S/Information");
+});
 
-     */
+client.on("message", function (topic, message) {
+    em.emit('mqtt_msg_arrived', topic, message)
+})
+
+em.on('mqtt_send_msg', function (cmd) {
+    switch (cmd) {
+        case 'Cars':
+            client.publish("Anki/Host/host/I", JSON.stringify({
+                cars: true
+            }))
+            break
+    }
+})
+
+//Websocket
+wss.on('connection', function connection(ws) {
+
+    ws.on('message', function incoming(message) {
+        console.log('received: %s', message);
+    });
+
+    em.on('mqtt_msg_arrived', function (topic, msg) {
+        let message = JSON.parse(msg)
+        //console.log("Topic: " + topic)
+        //console.log("msg: " + msg)
+        if (RegExp("Anki[\/]Host[\/].*[\/]S[\/]Cars").test(topic)) {
+            /*
+            cars = message;
+            ws.send(JSON.stringify({
+                "eventID": "ANKI_CONTROLLER_MSG_CONNECTED_VEHICLES",
+                "data": message
+            }))
+
+             */
+        } else if (RegExp("Anki[\/]Host[\/].*[\/]E[\/]CarConnected").test(topic)) {
+            ws.send(JSON.stringify({
+                "eventID": "ANKI_CONTROLLER_MSG_VEHICLE_CONNECTED",
+                "data": message
+            }))
+            console.log(message)
+        }
+        else if (RegExp("Anki[\/]Host[\/].*[\/]E[\/]CarDisconnected").test(topic)) {
+            ws.send(JSON.stringify({
+                "eventID": "ANKI_CONTROLLER_MSG_VEHICLE_DISCONNECTED",
+                "data": message
+            }))
+            console.log(message)
+        } else if (RegExp("Anki[\/]Car[\/].*[\/]E[\/]Messages[\/].*").test(topic)) {
+            let carID = topic.split("/")[2]
+            let event = topic.split("/")[5]
+            console.log(carID)
+            console.log(event)
+            ws.send(JSON.stringify({
+                "eventID": event,
+                "carID": carID,
+                "data": message
+            }))
+
+        } else if (RegExp("Anki[\/]Car[\/].*[\/]S[\/]Information").test(topic)) {
+            let carID = topic.split("/")[2]
+            let event = topic.split("/")[4]
+            console.log(carID)
+            console.log(event)
+            ws.send(JSON.stringify({
+                "eventID": event,
+                "carID": carID,
+                "data": message
+            }))
+
+        }
+        /*
+        if (topic.split("/")[2] === 'cars'){
+            ws.send(JSON.stringify(["cars", msg]))
+        }
+        else {
+            let car = topic.split("/")[2]
+            let cmd = topic.split("/")[3]
+            ws.send(JSON.stringify([car, cmd, msg]))
+        }
+        */
+
+    })
 });
 
 //REST
@@ -90,6 +157,8 @@ app.post("/export", parser, (req, res) => {
             'Content-Type': 'image/png',
             'Content-Length': img.length
         });
+
+        console.log(img.length)
 
         res.end(img);
     })
@@ -151,12 +220,7 @@ async function drawImage(grid_items, rows, cols) {
     })
 
     await Promise.all(promise)
-    console.log("done")
-    console.log("Canvas width: " + canvas.width)
-    console.log("Canvas height: " + canvas.height)
     return canvas
-    //const buffer = canvas.toBuffer('image/png')
-    //fs.writeFileSync('./image.png', buffer)
 }
 
 
