@@ -53,54 +53,44 @@ client.on("message", function (topic, message) {
     em.emit('mqtt_msg_arrived', topic, message)
 })
 
-em.on('mqtt_send_msg', function (cmd) {
-    switch (cmd) {
-        case 'Cars':
-            client.publish("Anki/Host/host/I", JSON.stringify({
-                cars: true
-            }))
-            break
-    }
-})
-
 //Websocket
 wss.on('connection', function connection(ws) {
 
     ws.on('message', function incoming(message) {
-        console.log('received: %s', message);
+        let msg = JSON.parse(message)
+        console.log(msg["command"])
+        let cmd = msg["command"]
+
+        switch (cmd) {
+            case "Cars":
+                client.publish("Anki/Host/host/I", JSON.stringify({
+                    cars: true
+                }))
+                break
+        }
     });
 
     em.on('mqtt_msg_arrived', function (topic, msg) {
         let message = JSON.parse(msg)
-        //console.log("Topic: " + topic)
-        //console.log("msg: " + msg)
         if (RegExp("Anki[\/]Host[\/].*[\/]S[\/]Cars").test(topic)) {
-            /*
             cars = message;
             ws.send(JSON.stringify({
                 "eventID": "ANKI_CONTROLLER_MSG_CONNECTED_VEHICLES",
                 "data": message
             }))
-
-             */
         } else if (RegExp("Anki[\/]Host[\/].*[\/]E[\/]CarConnected").test(topic)) {
             ws.send(JSON.stringify({
                 "eventID": "ANKI_CONTROLLER_MSG_VEHICLE_CONNECTED",
                 "data": message
             }))
-            console.log(message)
-        }
-        else if (RegExp("Anki[\/]Host[\/].*[\/]E[\/]CarDisconnected").test(topic)) {
+        } else if (RegExp("Anki[\/]Host[\/].*[\/]E[\/]CarDisconnected").test(topic)) {
             ws.send(JSON.stringify({
                 "eventID": "ANKI_CONTROLLER_MSG_VEHICLE_DISCONNECTED",
                 "data": message
             }))
-            console.log(message)
         } else if (RegExp("Anki[\/]Car[\/].*[\/]E[\/]Messages[\/].*").test(topic)) {
             let carID = topic.split("/")[2]
             let event = topic.split("/")[5]
-            console.log(carID)
-            console.log(event)
             ws.send(JSON.stringify({
                 "eventID": event,
                 "carID": carID,
@@ -110,8 +100,6 @@ wss.on('connection', function connection(ws) {
         } else if (RegExp("Anki[\/]Car[\/].*[\/]S[\/]Information").test(topic)) {
             let carID = topic.split("/")[2]
             let event = topic.split("/")[4]
-            console.log(carID)
-            console.log(event)
             ws.send(JSON.stringify({
                 "eventID": event,
                 "carID": carID,
@@ -132,6 +120,8 @@ wss.on('connection', function connection(ws) {
 
     })
 });
+
+wss.on("")
 
 //REST
 
@@ -157,9 +147,6 @@ app.post("/export", parser, (req, res) => {
             'Content-Type': 'image/png',
             'Content-Length': img.length
         });
-
-        console.log(img.length)
-
         res.end(img);
     })
 
@@ -222,6 +209,19 @@ async function drawImage(grid_items, rows, cols) {
     await Promise.all(promise)
     return canvas
 }
+
+process.on('exit', code => {
+    console.log("exit")
+    em.removeAllListeners()
+    process.exit()
+});
+
+//catches ctrl+c event
+process.on('SIGINT', code => {
+    console.log("CTRL+C")
+    em.removeAllListeners()
+    process.exit()
+});
 
 
 
