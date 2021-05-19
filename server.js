@@ -3,6 +3,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const emitter = require('events').EventEmitter
 const {createCanvas, loadImage} = require('canvas')
+const track_generator = require("./track_editor_generator")
 
 const HEIGHT_IMAGE = 2146
 const WIDTH_IMAGE = 2146
@@ -13,13 +14,47 @@ app.use(cors())
 let em = new emitter()
 
 //REST
-
+/*
 //Get image
 app.get('/image', function (req, res) {
     let uri = getImgUri(req.query["type"])
     res.sendFile(uri)
 })
 
+ */
+
+//Get image
+app.get('/image', function (req, res) {
+    let type = req.query["type"]
+    let track_id = req.query["track_id"]
+    let lanes = req.query["lanes"]
+    let bla = req.query["bla"]
+    let left = 0
+    let right = 0
+    let middle = 0
+
+    console.log(track_id)
+    console.log(type)
+    console.log(lanes)
+    console.log(bla)
+
+    switch (type) {
+        case "straight":
+            track_generator.drawStraightTrack(track_id, lanes)
+            break
+        case "curve":
+            track_generator.drawCurveTrack(track_id, lanes)
+            break
+        case "intersection":
+            track_generator.drawIntersectiontTrack(lanes)
+            break
+        case "junction":
+            if (req.query["left"] !== undefined) left = req.query["left"]
+            track_generator.drawJunctionTrack(track_id, lanes, left, right)
+            break
+    }
+    res.sendFile("wat")
+})
 
 app.post("/export", parser, (req, res) => {
     let grid_items = req.body

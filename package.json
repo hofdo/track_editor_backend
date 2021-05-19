@@ -20,12 +20,14 @@
     "feathers-socketio": "^2.0.1",
     "gm": "^1.23.1",
     "join-images": "^0.2.5",
+    "mongodb": "^3.6.7",
     "mqtt": "^4.2.6",
     "socket.io": "^4.0.1",
     "websocket": "^1.0.34",
     "ws": "^7.4.5"
   },
   "devDependencies": {
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "mongoose": "^5.12.10"
   }
 }
