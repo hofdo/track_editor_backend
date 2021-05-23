@@ -15,9 +15,6 @@ exports.drawStraightTrack = function drawStraightTrack(track_id, lanes) {
     //x value where the first lane starts
     let start_x = WIDTH_IMAGE - x - 170
 
-    console.log(x)
-    console.log(start_x)
-
     let default_location_id_code_top = 0
     let default_location_id_code_middle = 1
     let default_location_id_code_bottom = 2
@@ -180,7 +177,6 @@ exports.drawStraightTrack = function drawStraightTrack(track_id, lanes) {
 
 
         ctx.drawImage(canvas, 0, 0)
-        console.log("Finished Lane: " + lane)
         start_x -= 90
     }
 
@@ -188,10 +184,10 @@ exports.drawStraightTrack = function drawStraightTrack(track_id, lanes) {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const buffer = canvas.toBuffer('image/png')
-    fs.writeFileSync('./straight_track_piece.png', buffer)
+    //const buffer = canvas.toBuffer('image/png')
+    //fs.writeFileSync('./straight_track_piece.png', buffer)
     console.log("Finished Drawing")
-    return canvas
+    return canvas.toBuffer()
 }
 
 exports.drawIntersectiontTrack = function drawInterSectionTrack(lanes) {
@@ -443,9 +439,10 @@ exports.drawIntersectiontTrack = function drawInterSectionTrack(lanes) {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const buffer = canvas.toBuffer('image/png')
-    fs.writeFileSync('./intersection_track_piece.png', buffer)
+   // const buffer = canvas.toBuffer('image/png')
+   // fs.writeFileSync('./intersection_track_piece.png', buffer)
     console.log("Finished Drawing")
+    return canvas.toBuffer()
 }
 
 exports.drawCurveTrack = function drawCurveTrack(track_id, lanes) {
@@ -800,7 +797,7 @@ exports.drawCurveTrack = function drawCurveTrack(track_id, lanes) {
     //fs.writeFileSync('./curve_track_piece.png', buffer)
     console.log("Finished Drawing")
 
-    return canvas.toDataURL()
+    return canvas.toBuffer()
 }
 
 exports.drawJunctionTrack = function drawJunctionTrack(track_id, lanes, left, right){
@@ -1257,7 +1254,7 @@ exports.drawJunctionTrack = function drawJunctionTrack(track_id, lanes, left, ri
     //const buffer = canvas.toBuffer('image/png')
     //fs.writeFileSync('./junction_track_piece.png', buffer)
     console.log("Finished Drawing")
-    return canvas.toDataURL()
+    return canvas.toBuffer()
 }
 
 exports.drawJunctionWithStraightTrack = function drawJunctionWithStraight(track_id, lanes, left, middle, right) {
