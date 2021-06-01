@@ -37,15 +37,6 @@ db.once("open", function () {
     console.log("Connected")
 })
 
-//REST
-/*
-//Get image
-app.get('/image', function (req, res) {
-    let uri = getImgUri(req.query["type"])
-    res.sendFile(uri)
-})
-
- */
 
 //Get image
 app.get('/image', function (req, res) {
@@ -110,28 +101,6 @@ let server = app.listen(8081, function () {
     let port = server.address().port
     console.log("Example app listening at http://%s:%s", host, port)
 })
-
-/**
- *
- * @param type
- * @returns {string}
- */
-
-function getImgUri(type) {
-    let uri = ""
-    switch (type) {
-        case "straight":
-            uri = "C:\\Users\\DominiqueHofmann\\WebstormProjects\\track_editor_backend\\imgs\\Straight_Template-Recovered.png"
-            break
-        case "curve":
-            uri = "C:\\Users\\DominiqueHofmann\\WebstormProjects\\track_editor_backend\\imgs\\Curve_Template-Recovered.png"
-            break
-        case "intersection":
-            uri = "C:\\Users\\DominiqueHofmann\\WebstormProjects\\track_editor_backend\\imgs\\Intersection_5-[Recovered].png"
-            break
-    }
-    return uri
-}
 
 /**
  *
