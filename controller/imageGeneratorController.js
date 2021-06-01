@@ -1,12 +1,13 @@
 const {createCanvas, loadImage} = require('canvas')
+let mongoController = require('../controller/mongoController');
 const fs = require('fs')
 
 const HEIGHT_IMAGE = 4292
 const WIDTH_IMAGE = 4292
 
 //drawStraightTrack(15, 16)
-exports.drawStraightTrack = function drawStraightTestTrack(track_id, lanes) {
-//function drawStraightTrack(track_id, lanes) {
+//function drawStraightTestTrack(track_id, lanes) {
+function drawStraightTrack(track_id, lanes) {
     let binary = track_id.toString(2).split("")
     binary.reverse()
     console.log("Start Drawing Process")
@@ -51,7 +52,7 @@ exports.drawStraightTrack = function drawStraightTestTrack(track_id, lanes) {
     return canvas.toBuffer()
 }
 
-exports.drawIntersectiontTrack = function drawInterSectionTrack(lanes) {
+function drawInterSectionTrack(lanes) {
     let track_id = 10
     let binary = track_id.toString(2).split("")
     //binary.reverse()
@@ -300,13 +301,13 @@ exports.drawIntersectiontTrack = function drawInterSectionTrack(lanes) {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-   // const buffer = canvas.toBuffer('image/png')
-   // fs.writeFileSync('./intersection_track_piece.png', buffer)
+    // const buffer = canvas.toBuffer('image/png')
+    // fs.writeFileSync('./intersection_track_piece.png', buffer)
     console.log("Finished Drawing")
     return canvas.toBuffer()
 }
 
-exports.drawCurveTrack = function drawCurveTrack(track_id, lanes) {
+function drawCurveTrack(track_id, lanes) {
 
     let binary = track_id.toString(2).split("")
     binary.reverse()
@@ -589,66 +590,66 @@ exports.drawCurveTrack = function drawCurveTrack(track_id, lanes) {
     ctx.strokeStyle = 'black'
     ctx.arc(0, WIDTH_IMAGE, outer_distance+110, end, start, true);
     ctx.stroke();
-        /*
+    /*
 
-        #Save for documentation
+    #Save for documentation
 
-        for (let i = 1; i < 8; i++) {
+    for (let i = 1; i < 8; i++) {
 
-            let code_angle_beta = radianToDegree(start_code)
-            let code_angle_alpha = 90 - code_angle_beta
+        let code_angle_beta = radianToDegree(start_code)
+        let code_angle_alpha = 90 - code_angle_beta
 
-            let code_dist_a_y = Math.round((WIDTH_IMAGE - (Math.sin(degreeToRadian(code_angle_beta)) * radius))*100)/100
-            let code_dist_b_x = Math.round(((Math.sin(degreeToRadian(code_angle_alpha)) * radius))*100)/100
+        let code_dist_a_y = Math.round((WIDTH_IMAGE - (Math.sin(degreeToRadian(code_angle_beta)) * radius))*100)/100
+        let code_dist_b_x = Math.round(((Math.sin(degreeToRadian(code_angle_alpha)) * radius))*100)/100
 
-            //let code_dist_a_y = WIDTH_IMAGE - (Math.sin(degreeToRadian(code_angle_beta)) * radius)
-            //let code_dist_b_x = (Math.sin(degreeToRadian(code_angle_alpha)) * radius)
+        //let code_dist_a_y = WIDTH_IMAGE - (Math.sin(degreeToRadian(code_angle_beta)) * radius)
+        //let code_dist_b_x = (Math.sin(degreeToRadian(code_angle_alpha)) * radius)
 
-            let code_dist_line_b_y = (Math.sin(degreeToRadian(code_angle_alpha))*16)
-            let code_dist_line_a_x = (Math.sin(degreeToRadian(code_angle_beta))*16)
+        let code_dist_line_b_y = (Math.sin(degreeToRadian(code_angle_alpha))*16)
+        let code_dist_line_a_x = (Math.sin(degreeToRadian(code_angle_beta))*16)
 
-            //console.log("alpha: " + code_angle_alpha)
-            //console.log("alpha_dist: " + code_dist_a_y)
-            //console.log("beta: " + code_angle_beta)
-            //console.log("beta_dist: " + code_dist_b_x)
-            ctx.fillStyle = "black"
+        //console.log("alpha: " + code_angle_alpha)
+        //console.log("alpha_dist: " + code_dist_a_y)
+        //console.log("beta: " + code_angle_beta)
+        //console.log("beta_dist: " + code_dist_b_x)
+        ctx.fillStyle = "black"
 
-            let cx = ((code_dist_b_x-38) + 0.5 * 76)
-            let cy = ((code_dist_a_y) + 0.5 * 4)
+        let cx = ((code_dist_b_x-38) + 0.5 * 76)
+        let cy = ((code_dist_a_y) + 0.5 * 4)
 
-            let code_right_width = 4
-            let code_right_zero_distance = 16
-            let code_right_2_distance = 16
+        let code_right_width = 4
+        let code_right_zero_distance = 16
+        let code_right_2_distance = 16
 
-            if (i%7 === 0){
-                code_right_width = 16
-            }
-
-            ctx.save()
-            //ctx.translate( x+width/2, y+height/2 );
-            ctx.translate( cx, cy);
-
-            ctx.rotate(degreeToRadian(code_angle_alpha));
-
-            ctx.translate(-((code_dist_b_x) + 0.5 * 76), -cy)
-
-            ctx.fillRect( code_dist_b_x , code_dist_a_y-16, 76, 4);
-            ctx.fillRect( code_dist_b_x , code_dist_a_y+16, 76, 4);
-
-            console.log(code_dist_line_b_y)
-            console.log(code_dist_line_a_x)
-
-            ctx.restore()
-
-            //ctx.fillRect(0, 0, width,height);
-
-            //drawRotatedRect(ctx, code_dist_b_x, code_dist_a_y, 76, 4, code_dist_line_a_x, code_dist_line_b_y, code_angle_alpha)
-            //ctx.fillRect(code_dist_b_x, code_dist_a_y, 76, 4)
-
-            start_code += (Math.PI * code_length_percent)
+        if (i%7 === 0){
+            code_right_width = 16
         }
 
-         */
+        ctx.save()
+        //ctx.translate( x+width/2, y+height/2 );
+        ctx.translate( cx, cy);
+
+        ctx.rotate(degreeToRadian(code_angle_alpha));
+
+        ctx.translate(-((code_dist_b_x) + 0.5 * 76), -cy)
+
+        ctx.fillRect( code_dist_b_x , code_dist_a_y-16, 76, 4);
+        ctx.fillRect( code_dist_b_x , code_dist_a_y+16, 76, 4);
+
+        console.log(code_dist_line_b_y)
+        console.log(code_dist_line_a_x)
+
+        ctx.restore()
+
+        //ctx.fillRect(0, 0, width,height);
+
+        //drawRotatedRect(ctx, code_dist_b_x, code_dist_a_y, 76, 4, code_dist_line_a_x, code_dist_line_b_y, code_angle_alpha)
+        //ctx.fillRect(code_dist_b_x, code_dist_a_y, 76, 4)
+
+        start_code += (Math.PI * code_length_percent)
+    }
+
+     */
 
     ctx.globalCompositeOperation = 'destination-over'
     ctx.fillStyle = "white";
@@ -661,7 +662,7 @@ exports.drawCurveTrack = function drawCurveTrack(track_id, lanes) {
     return canvas.toBuffer()
 }
 
-exports.drawJunctionTrack = function drawJunctionTrack(track_id, lanes, left, right){
+function drawJunctionTrack(track_id, lanes, left, right){
 
     right = lanes - left
 
@@ -942,14 +943,14 @@ exports.drawJunctionTrack = function drawJunctionTrack(track_id, lanes, left, ri
         //Iterate distance for next lane
         outer_distance_left += 90
     }
-        //Todo Workaround
-        outer_distance_left -= 90
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 40
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left+25, end_left, end_left - ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-        ctx.stroke();
+    //Todo Workaround
+    outer_distance_left -= 90
+    //Right Side
+    ctx.beginPath();
+    ctx.lineWidth = 40
+    ctx.strokeStyle = 'black'
+    ctx.arc(0, WIDTH_IMAGE, outer_distance_left+25, end_left, end_left - ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
+    ctx.stroke();
 
 
 
@@ -1118,7 +1119,7 @@ exports.drawJunctionTrack = function drawJunctionTrack(track_id, lanes, left, ri
     return canvas.toBuffer()
 }
 
-exports.drawJunctionWithStraightTrack = function drawJunctionWithStraight(track_id, lanes, left, middle, right) {
+function drawJunctionWithStraight(track_id, lanes, left, middle, right) {
 
     let binary = track_id.toString(2).split("")
     binary.reverse()
@@ -1767,5 +1768,65 @@ function drawStraightSideLines(ctx, start_x, x) {
     ctx.fillRect(x - 128, HEIGHT_IMAGE - 100, 28, 100)
 
     return ctx
+}
+
+exports.drawTrackPiece = function drawTrackPiece(type, track_id, lanes, left, right){
+    let data
+    switch (type) {
+        case "straight":
+            data = drawStraightTrack(track_id, lanes)
+            break
+        case "curve":
+            data = drawCurveTrack(track_id, lanes)
+            break
+        case "intersection":
+            data = drawInterSectionTrack(lanes)
+            break
+        case "junction":
+            data = drawJunctionTrack(track_id, lanes, left, right)
+            break
+    }
+    return data
+}
+
+exports.drawImage = async function drawImage(grid_items, rows, cols) {
+    let canvas = createCanvas(WIDTH_IMAGE/2 * rows, HEIGHT_IMAGE/2 * cols)
+    let ctx = canvas.getContext('2d')
+    let buffer
+
+    for (let grid of grid_items){
+        const grid_data = await mongoController.findTrack(grid.item.track_id, grid.type, grid.item.lanes)
+        if (grid_data !== null){
+            buffer = grid_data.Data
+            console.log(buffer)
+        }
+        else {
+            buffer = require('./imageGeneratorController').drawTrackPiece(grid.type, grid.item.track_id, grid.item.lanes, grid.item.left, grid.item.right)
+        }
+        let degree
+        switch (grid.item.degree.toString()) {
+            case "0":
+                degree = 0
+                break
+            case "90":
+                degree = Math.PI / 2
+                break
+            case "180":
+                degree = Math.PI
+                break
+            case "270":
+                degree = 3 * Math.PI / 2
+                break
+        }
+
+        loadImage(buffer).then((image) => {
+            ctx.save()
+            ctx.translate(((grid.item.x + 1) * WIDTH_IMAGE/2) - 1073, ((grid.item.y + 1) * HEIGHT_IMAGE/2) - 1073);
+            ctx.rotate(degree);
+            ctx.drawImage(image, -1073, -1073, WIDTH_IMAGE/2, HEIGHT_IMAGE/2)
+            ctx.restore()
+        })
+    }
+    return canvas
 }
 
