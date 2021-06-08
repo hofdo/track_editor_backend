@@ -1,7 +1,7 @@
 'use strict'
 
 module.exports = function(app) {
-    let mongoController = require('../../controller/mongoController');
+    let mongoController = require('../../controller/mongoDBController');
     let trackGeneratorController = require('../../controller/imageGeneratorController');
     const bodyParser = require('body-parser')
 

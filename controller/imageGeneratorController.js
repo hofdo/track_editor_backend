@@ -1,62 +1,79 @@
 const {createCanvas, loadImage} = require('canvas')
-let mongoController = require('../controller/mongoController');
+let mongoController = require('./mongoDBController');
 const fs = require('fs')
+
+let straight_track_piece_conf = require('./track_piece_schema/straight_track_piece').straight_track_piece
+let intersection_track_piece_conf = require('./track_piece_schema/intersection_track_piece').intersection_track_piece
+let curve_track_piece_conf = require('./track_piece_schema/curve_track_piece').curve_track_piece
+let junction_track_piece_conf_left = require('./track_piece_schema/junction_track_piece').junction_track_piece_left
+let junction_track_piece_conf_right = require('./track_piece_schema/junction_track_piece').junction_track_piece_right
+let junction_track_piece_code_conf = require('./track_piece_schema/junction_track_piece').junction_track_piece_code
+let junction_track_piece_sidebar_conf = require('./track_piece_schema/junction_track_piece').junction_track_piece_side_line
 
 const HEIGHT_IMAGE = 4292
 const WIDTH_IMAGE = 4292
 
-//drawStraightTrack(15, 16)
-//function drawStraightTestTrack(track_id, lanes) {
+/**
+ *
+ * @param track_id
+ * @param lanes
+ * @returns {Buffer}
+ */
+
 function drawStraightTrack(track_id, lanes) {
-    let binary = track_id.toString(2).split("")
+    let binary = (track_id >>> 0).toString(2).split("");
     binary.reverse()
     console.log("Start Drawing Process")
 
-    const start_y_top_track = 436
-    const start_y_top_location = 436
-    const start_y_bottom_track = 2868
-    const start_y_bottom_location = 2868
-    const start_y_middle_track = 1652
-    const start_y_middle_location = 1652
+    let straight
 
     //Calculate distance to outer part of the track
-    let x = ((4292 - ((lanes * 90) + 80)) / 2)
+    let outer_distance = ((4292 - ((lanes * 90) + 80)) / 2)
 
     //x value where the first lane starts
-    let start_x = WIDTH_IMAGE - x - 170
+    let start_x = WIDTH_IMAGE - outer_distance - 170
+    let side_line_start = start_x
 
     let canvas = createCanvas(WIDTH_IMAGE, HEIGHT_IMAGE)
     let ctx = canvas.getContext('2d')
 
-    ctx = drawStraightSideLines(ctx, start_x, x)
 
     for (let i = 0; i < lanes; i++) {
 
+        straight = straight_track_piece_conf(start_x, outer_distance, side_line_start)
+
         let lane = i
 
-        ctx = drawStraightStartLine('top_down', ctx, start_x)
+        ctx = drawStraightStartLine(ctx, straight)
 
-        ctx = drawStraightLineWithCodes(ctx,binary, start_x, start_y_top_track, start_y_top_location, start_y_bottom_track, start_y_middle_track, start_y_middle_location, start_y_bottom_track, start_y_bottom_location, lane)
+        ctx = drawStraightLineWithCodes(ctx, binary, straight, lane)
 
         ctx.drawImage(canvas, 0, 0)
         start_x -= 90
     }
 
+    ctx = drawStraightSideLines(ctx, straight)
+
     ctx.globalCompositeOperation = 'destination-over'
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const buffer = canvas.toBuffer('image/png')
-    fs.writeFileSync('./straight_track_piece.png', buffer)
     console.log("Finished Drawing")
     return canvas.toBuffer()
 }
 
+/**
+ *
+ * @param lanes
+ * @returns {Buffer}
+ */
+
 function drawInterSectionTrack(lanes) {
     let track_id = 10
     let binary = track_id.toString(2).split("")
-    //binary.reverse()
     console.log("Start Drawing Process")
+
+    let intersection
 
     let canvas = createCanvas(WIDTH_IMAGE, HEIGHT_IMAGE)
     let ctx = canvas.getContext('2d')
@@ -67,233 +84,16 @@ function drawInterSectionTrack(lanes) {
     //x value where the first lane starts
     let start_val = WIDTH_IMAGE - outer_distance - 170
 
-    //Distances for the different track and location codes
-    const track_id_code_zero_x = 67
-    const track_id_code_one_x = 64
-    const location_id_code_zero_x = 99
-    const location_id_code_one_x = 96
-
-    //Distances for the different intersection codes
-    //small
-    const intersection_center_small = 83
-
-    //big
-    const intersection_center_big = 78
-
     for (let i = 0; i < lanes; i++) {
 
-        let start_y_top = 132
-        let start_x_top = 132
-        let start_y_bottom = 4090
-        let start_x_bottom = 4090
+        intersection = intersection_track_piece_conf(start_val)
 
-        let lane = i
-        //Draw both squares at the top (2)
-        ctx.fillRect(start_val, 0, 80, 100)
-        ctx.fillRect(start_val + 90, 0, 80, 100)
+        drawIntersectionStartLineWithCode(ctx, intersection, binary)
 
-        //Draw both squares at the bottom (1)
-        ctx.fillRect(start_val, HEIGHT_IMAGE - 100, 80, 100)
-        ctx.fillRect(start_val + 90, HEIGHT_IMAGE - 100, 80, 100)
-
-        //Draw both squares on the left (4)
-        ctx.fillRect(0, start_val, 100, 80)
-        ctx.fillRect(0, start_val + 90, 100, 80)
-
-        //Draw both squares on the right (3)
-        ctx.fillRect(WIDTH_IMAGE - 100, start_val, 100, 80)
-        ctx.fillRect(WIDTH_IMAGE - 100, start_val + 90, 100, 80)
-
-        //Draw the lines at the top (2) for the car to follow
-        ctx.fillRect(start_val + 80, 100, 10, 640)
-
-        //Draw the lines at the bottom (1) for the car to follow
-        ctx.fillRect(start_val + 80, HEIGHT_IMAGE - 740, 10, 640)
-
-        //Draw the lines to the right (3) for the car to follow
-        ctx.fillRect(100, start_val + 80, 640, 10)
-
-        //Draw the lines to the left (4) for the car to follow
-        ctx.fillRect(WIDTH_IMAGE - 740, start_val + 80, 640, 10)
-
-        /**
-         * Drawing the 3 codes at the bottom, that tell the car that the current track a intersection is
-         */
-
-        //Drawing the intersection code at the bottom
-        ctx.fillRect(start_val + intersection_center_small, HEIGHT_IMAGE - 816, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 14, HEIGHT_IMAGE - 816, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 28, HEIGHT_IMAGE - 816, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 14, HEIGHT_IMAGE - 816, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 28, HEIGHT_IMAGE - 816, 4, 76)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(start_val + 80, HEIGHT_IMAGE - 892, 10, 76)
-
-        //Drawing the intersection code in the middle
-        ctx.fillRect(start_val + intersection_center_big, HEIGHT_IMAGE - 968, 12, 76)
-        ctx.fillRect(start_val + intersection_center_big - 18, HEIGHT_IMAGE - 968, 12, 76)
-        ctx.fillRect(start_val + intersection_center_big - 36, HEIGHT_IMAGE - 968, 12, 76)
-        ctx.fillRect(start_val + intersection_center_big + 18, HEIGHT_IMAGE - 968, 12, 76)
-        ctx.fillRect(start_val + intersection_center_big + 36, HEIGHT_IMAGE - 968, 12, 76)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(start_val + 80, HEIGHT_IMAGE - 1044, 10, 76)
-
-        //Drawing the intersection code at the top
-        ctx.fillRect(start_val + intersection_center_small, HEIGHT_IMAGE - 1120, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 14, HEIGHT_IMAGE - 1120, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 28, HEIGHT_IMAGE - 1120, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 14, HEIGHT_IMAGE - 1120, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 28, HEIGHT_IMAGE - 1120, 4, 76)
-
-        /**
-         * Drawing the 3 codes at the top, that tell the car that the current track a intersection is
-         */
-
-        //Drawing the intersection code at the bottom
-        ctx.fillRect(start_val + intersection_center_small, 740, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 14, 740, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 28, 740, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 14, 740, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 28, 740, 4, 76)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(start_val + 80, 816, 10, 76)
-
-        //Drawing the intersection code in the middle
-        ctx.fillRect(start_val + intersection_center_big, 892, 14, 76)
-        ctx.fillRect(start_val + intersection_center_big - 14, 892, 4, 76)
-        ctx.fillRect(start_val + intersection_center_big - 28, 892, 4, 76)
-        ctx.fillRect(start_val + intersection_center_big + 22, 892, 4, 76)
-        ctx.fillRect(start_val + intersection_center_big + 36, 892, 4, 76)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(start_val + 80, 968, 10, 76)
-
-        //Drawing the intersection code at the top
-        ctx.fillRect(start_val + intersection_center_small, 1044, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 14, 1044, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small - 28, 1044, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 14, 1044, 4, 76)
-        ctx.fillRect(start_val + intersection_center_small + 28, 1044, 4, 76)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(start_val + 79, 1120, 12, 2052)
-
-        /**
-         * Drawing the 3 codes on the right, that tell the car that the current track a intersection is
-         */
-
-        //Drawing the intersection code at the bottom
-        ctx.fillRect(WIDTH_IMAGE - 816, start_val + intersection_center_small, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 816, start_val + intersection_center_small - 14, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 816, start_val + intersection_center_small - 28, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 816, start_val + intersection_center_small + 14, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 816, start_val + intersection_center_small + 28, 76, 4)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(WIDTH_IMAGE - 892, start_val + 80, 76, 10)
-
-        //Drawing the intersection code in the middle
-        ctx.fillRect(WIDTH_IMAGE - 968, start_val + intersection_center_small, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 968, start_val + intersection_center_big - 14, 76, 12)
-        ctx.fillRect(WIDTH_IMAGE - 968, start_val + intersection_center_big - 32, 76, 12)
-        ctx.fillRect(WIDTH_IMAGE - 968, start_val + intersection_center_big + 14, 76, 12)
-        ctx.fillRect(WIDTH_IMAGE - 968, start_val + intersection_center_big + 32, 76, 12)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(WIDTH_IMAGE - 1044, start_val + 80, 76, 10)
-
-        //Drawing the intersection code at the top
-        ctx.fillRect(WIDTH_IMAGE - 1120, start_val + intersection_center_small, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 1120, start_val + intersection_center_small - 14, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 1120, start_val + intersection_center_small - 28, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 1120, start_val + intersection_center_small + 14, 76, 4)
-        ctx.fillRect(WIDTH_IMAGE - 1120, start_val + intersection_center_small + 28, 76, 4)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(1120, start_val + 82, 2052, 6)
-
-        /**
-         * Drawing the 3 codes on the left, that tell the car that the current track a intersection is
-         */
-
-        //Drawing the intersection code at the bottom
-        ctx.fillRect(740, start_val + intersection_center_small, 76, 4)
-        ctx.fillRect(740, start_val + intersection_center_small - 14, 76, 4)
-        ctx.fillRect(740, start_val + intersection_center_small - 28, 76, 4)
-        ctx.fillRect(740, start_val + intersection_center_small + 14, 76, 4)
-        ctx.fillRect(740, start_val + intersection_center_small + 28, 76, 4)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(816, start_val + 80, 76, 10)
-
-        //Drawing the intersection code in the middle
-        ctx.fillRect(892, start_val + intersection_center_small, 76, 4)
-        ctx.fillRect(892, start_val + intersection_center_small - 14, 76, 4)
-        ctx.fillRect(892, start_val + intersection_center_small - 28, 76, 4)
-        ctx.fillRect(892, start_val + intersection_center_small + 14, 76, 4)
-        ctx.fillRect(892, start_val + intersection_center_small + 28, 76, 4)
-
-        //Drawing the connection line between the intersection codes
-        ctx.fillRect(968, start_val + 80, 76, 10)
-
-        //Drawing the intersection code at the top
-        ctx.fillRect(1044, start_val + intersection_center_small, 76, 4)
-        ctx.fillRect(1044, start_val + intersection_center_small - 14, 76, 4)
-        ctx.fillRect(1044, start_val + intersection_center_small - 28, 76, 4)
-        ctx.fillRect(1044, start_val + intersection_center_small + 14, 76, 4)
-        ctx.fillRect(1044, start_val + intersection_center_small + 28, 76, 4)
-
-        //Drawing the bottom (1) four lines of code for the car to read
-        for (let i = 0; i < 4; i++) {
-            if (binary[i] === "1") {
-                ctx.fillRect(start_val + location_id_code_one_x, start_y_bottom, 10, 76)
-            } else {
-                ctx.fillRect(start_val + location_id_code_zero_x, start_y_bottom, 4, 76)
-            }
-            ctx.fillRect(start_val + track_id_code_zero_x, start_y_bottom, 4, 76)
-            start_y_bottom -= 152
-        }
-
-        //Drawing the top (2) four lines of code for the car to read
-        for (let i = 0; i < 4; i++) {
-            if (binary[i] === "1") {
-                ctx.fillRect(start_val + track_id_code_one_x, start_y_top, 10, 76)
-            } else {
-                ctx.fillRect(start_val + track_id_code_one_x, start_y_top, 4, 76)
-            }
-            ctx.fillRect(start_val + location_id_code_zero_x, start_y_top, 4, 76)
-            start_y_top += 152
-        }
-
-        //Drawing the top four lines of code on the right (3) for the car to read
-        for (let i = 0; i < 4; i++) {
-            if (binary[i] === "1") {
-                ctx.fillRect(start_x_bottom, start_val + track_id_code_one_x, 76, 10)
-            } else {
-                ctx.fillRect(start_x_bottom, start_val + track_id_code_zero_x, 76, 4)
-            }
-            //ctx.fillRect(start_x_bottom, start_val + track_id_code_zero_x, 76, 4)
-            ctx.fillRect(start_x_bottom, start_val + location_id_code_zero_x, 76, 4)
-            start_x_bottom -= 152
-        }
-
-        //Drawing the four lines of code on the left (4) for the car to read
-        for (let i = 0; i < 4; i++) {
-            if (binary[i] === "1") {
-                ctx.fillRect(start_x_top, start_val + location_id_code_one_x, 76, 10)
-            } else {
-                ctx.fillRect(start_x_top, start_val + location_id_code_zero_x, 76, 4)
-            }
-            ctx.fillRect(start_x_top, start_val + location_id_code_zero_x, 76, 4)
-            start_x_top += 152
-        }
-
+        drawIntersectionLineWithIntersectionCode(ctx, intersection)
 
         ctx.drawImage(canvas, 0, 0)
-        //console.log("Finished Lane: " + lane)
+
         start_val -= 90
     }
 
@@ -301,17 +101,24 @@ function drawInterSectionTrack(lanes) {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // const buffer = canvas.toBuffer('image/png')
-    // fs.writeFileSync('./intersection_track_piece.png', buffer)
     console.log("Finished Drawing")
     return canvas.toBuffer()
 }
 
+/**
+ *
+ * @param track_id
+ * @param lanes
+ * @returns {Buffer}
+ */
+
 function drawCurveTrack(track_id, lanes) {
 
-    let binary = track_id.toString(2).split("")
+    let binary = (track_id >>> 0).toString(2).split("");
     binary.reverse()
     console.log("Start Drawing Process")
+
+    let curve
 
     let canvas = createCanvas(WIDTH_IMAGE, HEIGHT_IMAGE)
     let ctx = canvas.getContext('2d')
@@ -321,349 +128,66 @@ function drawCurveTrack(track_id, lanes) {
     //Define the end point of the arc in radiant
     let end = 0
     //Calculate distance to outer part of the track
-    let outer_distance = ((4292 - ((lanes * 90) + 80)) / 2)+85
-
+    let outer_distance = ((4292 - ((lanes * 90) + 80)) / 2) + 85
+    let outer_distance_sideline = outer_distance
     let loc_code_counter = -1
 
-    //Draw the outlines on the left
-    //Draw outer square at the bottom
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-135, end, end - ((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw outer square at the top
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-135, start, start + ((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-70, end, start, true);
-    ctx.stroke();
-
-    //Draw 2nd inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-89, end-((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw 3th inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-105, end, start, true);
-    ctx.stroke();
-
-    //Draw 3th outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-164, end, start, true);
-    ctx.stroke();
-
-    //Draw 2nd outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-183, end-((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw the outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-200, end, start, true);
-    ctx.stroke();
-
-    for (let i=0; i<lanes; i++) {
+    for (let i = 0; i < lanes; i++) {
 
         //Calculate the circumference of the whole circle
         const quarter_circumference = (outer_distance * Math.PI) / 2
 
         //Percentage length of the code piece
         const code_length_percent = (76 / quarter_circumference)
-        const code_length_rad = code_length_percent * Math.PI/2
+        const code_length_rad = code_length_percent * Math.PI / 2
 
         //Percentage length of the squares at the beginning and in the end
         const start_length_percent = (100 / quarter_circumference)
-        const start_length_rad = start_length_percent * Math.PI/2
+        const start_length_rad = start_length_percent * Math.PI / 2
 
         //Start Position for the code pieces
         let start_code = start + code_length_rad * 1.8
 
         //Calculate how many codes will fit on the arc
-        let amount_of_codes = (quarter_circumference - 190) / (76*1.7)
+        let amount_of_codes = (quarter_circumference - 190) / (76 * 1.7)
 
         //Calculate how many numbered codes will be on the arc
-        let amount_of_nub_codes = amount_of_codes - (amount_of_codes%8)
+        let amount_of_nub_codes = amount_of_codes - (amount_of_codes % 8)
 
         amount_of_codes = Math.floor(amount_of_codes)
 
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance, start, end, false);
-        ctx.stroke();
+        curve = curve_track_piece_conf(start, end, outer_distance, outer_distance_sideline, start_code, code_length_rad, start_length_rad)
 
-        //Draw the codes the car reads for information
-        for (let j = 0; j < amount_of_codes; j++) {
+        let res = drawCurveArcCode(ctx, curve, amount_of_codes, amount_of_nub_codes, outer_distance, start_code, code_length_rad, binary, loc_code_counter)
+        ctx = res.ctx
+        loc_code_counter = res.counter
 
-            //Get the binary string of the current location code
-            let binary_loc = loc_code_counter.toString(2).split("")
-            binary_loc.reverse()
-
-            //When the max amount of codes that carry information is drawn the rest of the codes will be drawn as the extra thick code, which signal the end of a section
-            if (amount_of_nub_codes>0){
-                //Every 8th code will signal the end of the 7 Bit long array
-                if (j % 8 === 0) {
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 16
-                    ctx.arc(0, WIDTH_IMAGE, outer_distance-22, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 4
-                    ctx.arc(0, WIDTH_IMAGE, outer_distance+13, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-                    loc_code_counter++
-                } else {
-                    //Drawing the location ID code
-                    if (binary_loc[(j%8)-1] === "1"){
-                        //Draw the location code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance-16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw the location code for the binary value zero
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance-13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    //Drawing the track ID Code
-                    if (binary[(j%8)-1] === "1"){
-                        //draw the track id code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance+16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw code at the side of the arc that the car follows
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance+13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                }
-            }
-            else {
-                //Draw code at the side of the arc that the car follows
-                ctx.beginPath();
-                ctx.lineWidth = 16
-                ctx.arc(0, WIDTH_IMAGE, outer_distance-22, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.lineWidth = 4
-                ctx.arc(0, WIDTH_IMAGE, outer_distance+13, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-            }
-            start_code += code_length_rad * 1.7
-            amount_of_nub_codes--
-        }
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance+45, end, end - start_length_rad, true);
-        ctx.stroke();
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance-45, end, end - start_length_rad, true);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance, end, end - start_length_rad, true);
-        ctx.stroke();
-
-        //Draw Squares at the Top
-
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance+45, start, start + start_length_rad, false);
-        ctx.stroke();
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance-45, start, start + start_length_rad, false);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance, start, start + start_length_rad, false);
-        ctx.stroke();
+        ctx = drawCurveStartArc(ctx, curve, outer_distance, end, start_length_rad, start)
 
         //Iterate distance for next lane
         outer_distance += 90
     }
-
-    //Draw the outlines on the right
-    //Draw outer square at the bottom
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance+45, end, end - ((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw outer square at the top
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance+45, start, start + ((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-20, end, start, true);
-    ctx.stroke();
-
-    //Draw 2nd inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance-1, end-((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw 3th inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance+15, end, start, true);
-    ctx.stroke();
-
-    //Draw 3th outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance+74, end, start, true);
-    ctx.stroke();
-
-    //Draw 2nd outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance+93, end-((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw the outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance+110, end, start, true);
-    ctx.stroke();
-    /*
-
-    #Save for documentation
-
-    for (let i = 1; i < 8; i++) {
-
-        let code_angle_beta = radianToDegree(start_code)
-        let code_angle_alpha = 90 - code_angle_beta
-
-        let code_dist_a_y = Math.round((WIDTH_IMAGE - (Math.sin(degreeToRadian(code_angle_beta)) * radius))*100)/100
-        let code_dist_b_x = Math.round(((Math.sin(degreeToRadian(code_angle_alpha)) * radius))*100)/100
-
-        //let code_dist_a_y = WIDTH_IMAGE - (Math.sin(degreeToRadian(code_angle_beta)) * radius)
-        //let code_dist_b_x = (Math.sin(degreeToRadian(code_angle_alpha)) * radius)
-
-        let code_dist_line_b_y = (Math.sin(degreeToRadian(code_angle_alpha))*16)
-        let code_dist_line_a_x = (Math.sin(degreeToRadian(code_angle_beta))*16)
-
-        //console.log("alpha: " + code_angle_alpha)
-        //console.log("alpha_dist: " + code_dist_a_y)
-        //console.log("beta: " + code_angle_beta)
-        //console.log("beta_dist: " + code_dist_b_x)
-        ctx.fillStyle = "black"
-
-        let cx = ((code_dist_b_x-38) + 0.5 * 76)
-        let cy = ((code_dist_a_y) + 0.5 * 4)
-
-        let code_right_width = 4
-        let code_right_zero_distance = 16
-        let code_right_2_distance = 16
-
-        if (i%7 === 0){
-            code_right_width = 16
-        }
-
-        ctx.save()
-        //ctx.translate( x+width/2, y+height/2 );
-        ctx.translate( cx, cy);
-
-        ctx.rotate(degreeToRadian(code_angle_alpha));
-
-        ctx.translate(-((code_dist_b_x) + 0.5 * 76), -cy)
-
-        ctx.fillRect( code_dist_b_x , code_dist_a_y-16, 76, 4);
-        ctx.fillRect( code_dist_b_x , code_dist_a_y+16, 76, 4);
-
-        console.log(code_dist_line_b_y)
-        console.log(code_dist_line_a_x)
-
-        ctx.restore()
-
-        //ctx.fillRect(0, 0, width,height);
-
-        //drawRotatedRect(ctx, code_dist_b_x, code_dist_a_y, 76, 4, code_dist_line_a_x, code_dist_line_b_y, code_angle_alpha)
-        //ctx.fillRect(code_dist_b_x, code_dist_a_y, 76, 4)
-
-        start_code += (Math.PI * code_length_percent)
-    }
-
-     */
+    ctx = drawCurveSideLine(ctx, curve)
 
     ctx.globalCompositeOperation = 'destination-over'
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    //const buffer = canvas.toBuffer('image/png')
-    //fs.writeFileSync('./curve_track_piece.png', buffer)
     console.log("Finished Drawing")
 
     return canvas.toBuffer()
 }
 
-function drawJunctionTrack(track_id, lanes, left, right){
+/**
+ *
+ * @param track_id
+ * @param lanes
+ * @param left
+ * @param right
+ * @returns {Buffer}
+ */
 
+function drawJunctionTrack(track_id, lanes, left, right) {
     right = lanes - left
 
     let binary = track_id.toString(2).split("")
@@ -681,1096 +205,605 @@ function drawJunctionTrack(track_id, lanes, left, right){
     let end_right = Math.PI
 
     //Calculate distance to outer part of the track
-    let outer_distance_right = ((4292 - ((lanes * 90) + 80)) / 2)+85
+    let outer_distance_right = ((4292 - ((lanes * 90) + 80)) / 2) + 85
     let outer_distance_left = outer_distance_right
+
+    let junction_sidebar = junction_track_piece_sidebar_conf(outer_distance_right, outer_distance_left, end_right, end_left, start)
 
     let loc_code_counter = -1
 
-    //Draw the outlines on the left
-    //Draw outer square at the bottom
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-135, end_left, end_left - ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
+    ctx = drawJunctionSideLine(ctx, junction_sidebar)
 
-    //Draw outer square at the top
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-135, start, start + ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-70, end_left, start, true);
-    ctx.stroke();
-
-    //Draw 2nd inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-89, end_left-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw 3th inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-105, end_left, start, true);
-    ctx.stroke();
-
-    //Draw 3th outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-164, end_left, start, true);
-    ctx.stroke();
-
-    //Draw 2nd outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-183, end_left-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw the outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-200, end_left, start, true);
-    ctx.stroke();
-
-    //Draw the outlines on the right
-    //Draw outer square at the bottom
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-135, end_right, end_right + ((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw outer square at the top
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-135, start, start - ((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-70, end_right, start, false);
-    ctx.stroke();
-
-    //Draw 2nd inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-89, end_right+((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), start-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw 3th inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-105, end_right, start, false);
-    ctx.stroke();
-
-    //Draw 3th outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-164, end_right, start, false);
-    ctx.stroke();
-
-    //Draw 2nd outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-183, end_right+((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), start-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw the outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-200, end_right, start, false);
-    ctx.stroke();
-
-    for (let i=0; i<left; i++) {
-
-        //Calculate the circumference of the whole circle
-        const quarter_circumference_left = (outer_distance_left * Math.PI) / 2
-
-        //Percentage length of the code piece
-        const code_length_percent = (76 / quarter_circumference_left)
-        const code_length_rad = code_length_percent * Math.PI/2
-
-        //Percentage length of the squares at the beginning and in the end
-        const start_length_percent = (100 / quarter_circumference_left)
-        const start_length_rad = start_length_percent * Math.PI/2
-
-        //Start Position for the code pieces
-        let start_code = start + code_length_rad * 1.8
-
-        //Calculate how many codes will fit on the arc
-        let amount_of_codes = (quarter_circumference_left - 190) / (76*1.7)
-
-        //Calculate how many numbered codes will be on the arc
-        let amount_of_nub_codes = amount_of_codes - (amount_of_codes%8)
-
-        amount_of_codes = Math.floor(amount_of_codes)
-
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left, start, end_left, false);
-        ctx.stroke();
-
-        for (let j = 0; j < amount_of_codes; j++) {
-
-            //Get the binary string of the current location code
-            let binary_loc = loc_code_counter.toString(2).split("")
-            binary_loc.reverse()
-
-            //When the max amount of codes that carry information is drawn the rest of the codes will be drawn as the extra thick code, which signal the end of a section
-            if (amount_of_nub_codes>0){
-                //Every 8th code will signal the end of the 7 Bit long array
-                if (j % 8 === 0) {
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 16
-                    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-22, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 4
-                    ctx.arc(0, WIDTH_IMAGE, outer_distance_left+13, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-                    loc_code_counter++
-                } else {
-                    //Drawing the location ID code
-                    if (binary_loc[(j%8)-1] === "1"){
-                        //Draw the location code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw the location code for the binary value zero
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    //Drawing the track ID Code
-                    if (binary[(j%8)-1] === "1"){
-                        //draw the track id code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left+16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw code at the side of the arc that the car follows
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left+13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                }
-            }
-            else {
-                //Draw code at the side of the arc that the car follows
-                ctx.beginPath();
-                ctx.lineWidth = 16
-                ctx.arc(0, WIDTH_IMAGE, outer_distance_left-22, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.lineWidth = 4
-                ctx.arc(0, WIDTH_IMAGE, outer_distance_left+13, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-            }
-            start_code += code_length_rad * 1.7
-            amount_of_nub_codes--
-        }
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-45, end_left, end_left - start_length_rad, true);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left, end_left, end_left - start_length_rad, true);
-        ctx.stroke();
-
-        //Draw Squares at the Top
-
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left+45, start, start + start_length_rad, false);
-        ctx.stroke();
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-45, start, start + start_length_rad, false);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left, start, start + start_length_rad, false);
-        ctx.stroke();
-        //Iterate distance for next lane
-        outer_distance_left += 90
-    }
-    //Todo Workaround
-    outer_distance_left -= 90
-    //Right Side
-    ctx.beginPath();
-    ctx.lineWidth = 40
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left+25, end_left, end_left - ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-
-
-    for (let j=0; j<right; j++) {
-
-        //Calculate the circumference of the whole circle
-        const quarter_circumference_right = (outer_distance_right * Math.PI) / 2
-
-        //Percentage length of the code piece
-        const code_length_percent = 76 / quarter_circumference_right
-        const code_length_rad = code_length_percent * Math.PI/2
-
-        //Percentage length of the squares at the beginning and in the end
-        const start_length_percent = (100 / quarter_circumference_right)
-        const start_length_rad = start_length_percent * Math.PI/2
-
-        //Start Position for the code pieces
-        let start_code = end_right + code_length_rad * 1.8
-
-        //Calculate how many codes will fit on the arc
-        let amount_of_codes = (quarter_circumference_right - 190) / (76*1.7)
-
-        //Calculate how many numbered codes will be on the arc
-        let amount_of_nub_codes = amount_of_codes - (amount_of_codes%8)
-
-        amount_of_codes = Math.floor(amount_of_codes)
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right, end_right, start, false);
-        ctx.stroke();
-
-
-        //Draw the codes the car reads for information
-        for (let j = 0; j < amount_of_codes; j++) {
-
-            //Get the binary string of the current location code
-            let binary_loc = loc_code_counter.toString(2).split("")
-            binary_loc.reverse()
-
-            //When the max amount of codes that carry information is drawn the rest of the codes will be drawn as the extra thick code, which signal the end of a section
-            if (amount_of_nub_codes>0){
-                //Every 8th code will signal the end of the 7 Bit long array
-                if (j % 8 === 0) {
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 16
-                    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-22, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 4
-                    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+13, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-                    loc_code_counter++
-                } else {
-                    //Drawing the location ID code
-                    if (binary_loc[(j%8)-1] === "1"){
-                        //Draw the location code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw the location code for the binary value zero
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    //Drawing the track ID Code
-                    if (binary[(j%8)-1] === "1"){
-                        //draw the track id code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw code at the side of the arc that the car follows
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                }
-            }
-            else {
-                //Draw code at the side of the arc that the car follows
-                ctx.beginPath();
-                ctx.lineWidth = 16
-                ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-22, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.lineWidth = 4
-                ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+13, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-            }
-            start_code += code_length_rad * 1.7
-            amount_of_nub_codes--
-        }
-        //Draw Squares at the Bottom
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-45, end_right, end_right + start_length_rad, false);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right, end_right, end_right + start_length_rad, false);
-        ctx.stroke();
-
-        //Draw Squares at the Top
-        //Draw Squares at the Top
-
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+45, start, start - start_length_rad, true);
-        ctx.stroke();
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-45, start, start - start_length_rad, true);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right, start, start - start_length_rad, true);
-        ctx.stroke();
-
-        //Iterate distance for next lane
-        outer_distance_right += 90
-    }
-    //Todo Workaround
-    outer_distance_right -= 90
-    //Left Side
-    ctx.beginPath();
-    ctx.lineWidth = 40
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, WIDTH_IMAGE, outer_distance_right+25, end_right, end_right + ((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), false);
-    ctx.stroke();
+    let res_left = drawJunctionArc(ctx, "left", left, outer_distance_left, start, end_left, loc_code_counter, binary)
+    loc_code_counter = res_left.counter
+    ctx = res_left.ctx
+    console.log(loc_code_counter)
+    let res_right = drawJunctionArc(ctx, "right", right, outer_distance_right, end_right, start, loc_code_counter, binary)
+    loc_code_counter = res_right.counter
+    ctx = res_right.ctx
+    console.log(loc_code_counter)
 
     ctx.globalCompositeOperation = 'destination-over'
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    //const buffer = canvas.toBuffer('image/png')
-    //fs.writeFileSync('./junction_track_piece.png', buffer)
     console.log("Finished Drawing")
     return canvas.toBuffer()
 }
 
-function drawJunctionWithStraight(track_id, lanes, left, middle, right) {
+/**
+ * CURVE Functions
+ */
 
-    let binary = track_id.toString(2).split("")
-    binary.reverse()
-    console.log("Start Drawing Process")
+/**
+ *
+ * @param ctx
+ * @param curve
+ * @param amount_of_codes
+ * @param amount_of_nub_codes
+ * @param outer_distance
+ * @param start_code
+ * @param code_length_rad
+ * @param binary
+ * @param loc_code_counter
+ * @returns {{ctx, counter}}
+ */
 
-    let canvas = createCanvas(WIDTH_IMAGE, HEIGHT_IMAGE)
-    let ctx = canvas.getContext('2d')
+function drawCurveArcCode(ctx, curve, amount_of_codes, amount_of_nub_codes, outer_distance, start_code, code_length_rad, binary, loc_code_counter) {
 
-    //Define the start point of the arc in radiant
-    let start = Math.PI * 3 / 2
-    //Define the end point of the left arc in radiant
-    let end_left = 0
-    //Define the end point of the right arc in radiant
-    let end_right = Math.PI
+    //Draw the codes the car reads for information
+    for (let j = 0; j < amount_of_codes; j++) {
 
-    //Calculate distance to outer part of the track
-    let outer_distance_right = ((4292 - ((lanes * 90) + 80)) / 2)+85
-    let outer_distance_left = outer_distance_right
+        ctx.strokeStyle = "black"
 
-    let loc_code_counter = -1
+        //Get the binary string of the current location code
+        let binary_loc = (loc_code_counter >>> 0).toString(2).split("");
+        binary_loc.reverse()
 
-    //Draw the outlines on the left
-    //Draw outer square at the bottom
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-135, end_left, end_left - ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
+        //When the max amount of codes that carry information is drawn the rest of the codes will be drawn as the extra thick code, which signal the end of a section
+        if (amount_of_nub_codes > 0) {
+            //Every 8th code will signal the end of the 7 Bit long array
+            if (j % 8 === 0) {
+                //Draw the code that signals the car that a new section begins
+                ctx.beginPath();
+                ctx.lineWidth = curve.curve_code.transition.type_3.width
+                ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.transition.type_3.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
+                ctx.stroke();
 
-    //Draw outer square at the top
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-135, start, start + ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-70, end_left, start, true);
-    ctx.stroke();
-
-    //Draw 2nd inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-89, end_left-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw 3th inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-105, end_left, start, true);
-    ctx.stroke();
-
-    //Draw 3th outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-164, end_left, start, true);
-    ctx.stroke();
-
-    //Draw 2nd outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-183, end_left-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), start+((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw the outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-200, end_left, start, true);
-    ctx.stroke();
-
-    //Draw the outlines on the right
-    //Draw outer square at the bottom
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-135, end_right, end_right + ((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw outer square at the top
-    ctx.beginPath();
-    ctx.lineWidth = 80
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-135, start, start - ((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-70, end_right, start, false);
-    ctx.stroke();
-
-    //Draw 2nd inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-89, end_right+((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), start-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    //Draw 3th inner outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-105, end_right, start, false);
-    ctx.stroke();
-
-    //Draw 3th outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-164, end_right, start, false);
-    ctx.stroke();
-
-    //Draw 2nd outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-183, end_right+((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), start-((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    //Draw the outer outline
-    ctx.beginPath();
-    ctx.lineWidth = 23
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-200, end_right, start, false);
-    ctx.stroke();
-
-    for (let i=0; i<left; i++) {
-
-        //Calculate the circumference of the whole circle
-        const quarter_circumference_left = (outer_distance_left * Math.PI) / 2
-
-        //Percentage length of the code piece
-        const code_length_percent = (76 / quarter_circumference_left)
-        const code_length_rad = code_length_percent * Math.PI/2
-
-        //Percentage length of the squares at the beginning and in the end
-        const start_length_percent = (100 / quarter_circumference_left)
-        const start_length_rad = start_length_percent * Math.PI/2
-
-        //Start Position for the code pieces
-        let start_code = start + code_length_rad * 1.8
-
-        //Calculate how many codes will fit on the arc
-        let amount_of_codes = (quarter_circumference_left - 190) / (76*1.7)
-
-        //Calculate how many numbered codes will be on the arc
-        let amount_of_nub_codes = amount_of_codes - (amount_of_codes%8)
-
-        amount_of_codes = Math.floor(amount_of_codes)
-
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left, start, end_left, false);
-        ctx.stroke();
-
-        for (let j = 0; j < amount_of_codes; j++) {
-
-            //Get the binary string of the current location code
-            let binary_loc = loc_code_counter.toString(2).split("")
-            binary_loc.reverse()
-
-            //When the max amount of codes that carry information is drawn the rest of the codes will be drawn as the extra thick code, which signal the end of a section
-            if (amount_of_nub_codes>0){
-                //Every 8th code will signal the end of the 7 Bit long array
-                if (j % 8 === 0) {
-                    //Draw the code that signals the car that a new section begins
+                //Draw the code that signals the car that a new section begins
+                ctx.beginPath();
+                ctx.lineWidth = curve.curve_code.transition.type_1.width
+                ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.transition.type_1.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
+                ctx.stroke();
+                loc_code_counter++
+            } else {
+                //Drawing the location ID code
+                if (binary_loc[(j % 8) - 1] === "1") {
+                    //Draw the location code for the binary value one
                     ctx.beginPath();
-                    ctx.lineWidth = 16
-                    ctx.arc(0, WIDTH_IMAGE, outer_distance_left-22, start_code, start_code + code_length_rad, false);
+                    ctx.lineWidth = curve.curve_code.location.type_2.width
+                    ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.location.type_2.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
                     ctx.stroke();
-
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 4
-                    ctx.arc(0, WIDTH_IMAGE, outer_distance_left+13, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-                    loc_code_counter++
                 } else {
-                    //Drawing the location ID code
-                    if (binary_loc[(j%8)-1] === "1"){
-                        //Draw the location code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw the location code for the binary value zero
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    //Drawing the track ID Code
-                    if (binary[(j%8)-1] === "1"){
-                        //draw the track id code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left+16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw code at the side of the arc that the car follows
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(0, WIDTH_IMAGE, outer_distance_left+13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
+                    //Draw the location code for the binary value zero
+                    ctx.beginPath();
+                    ctx.lineWidth = curve.curve_code.location.type_1.width
+                    ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.location.type_1.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
+                    ctx.stroke();
+                }
+                //Drawing the track ID Code
+                if (binary[(j % 8) - 1] === "1") {
+                    //draw the track id code for the binary value one
+                    ctx.beginPath();
+                    ctx.lineWidth = curve.curve_code.track.type_2.width
+                    ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.track.type_2.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
+                    ctx.stroke();
+                } else {
+                    //Draw code at the side of the arc that the car follows
+                    ctx.beginPath();
+                    ctx.lineWidth = curve.curve_code.track.type_1.width
+                    ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.track.type_1.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
+                    ctx.stroke();
                 }
             }
-            else {
-                //Draw code at the side of the arc that the car follows
-                ctx.beginPath();
-                ctx.lineWidth = 16
-                ctx.arc(0, WIDTH_IMAGE, outer_distance_left-22, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
+        } else {
+            //Draw code at the side of the arc that the car follows
+            ctx.beginPath();
+            ctx.lineWidth = curve.curve_code.transition.type_3.width
+            ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.transition.type_3.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
+            ctx.stroke();
 
-                ctx.beginPath();
-                ctx.lineWidth = 4
-                ctx.arc(0, WIDTH_IMAGE, outer_distance_left+13, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-            }
-            start_code += code_length_rad * 1.7
-            amount_of_nub_codes--
+            ctx.beginPath();
+            ctx.lineWidth = curve.curve_code.transition.type_1.width
+            ctx.arc(curve.curve_code.common_data.cord_x, curve.curve_code.common_data.cord_y, curve.curve_code.transition.type_1.radius, curve.curve_code.common_data.start, curve.curve_code.common_data.end, curve.curve_code.common_data.anti_clockwise);
+            ctx.stroke();
         }
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-45, end_left, end_left - start_length_rad, true);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left, end_left, end_left - start_length_rad, true);
-        ctx.stroke();
-
-        //Draw Squares at the Top
-
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left+45, start, start + start_length_rad, false);
-        ctx.stroke();
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left-45, start, start + start_length_rad, false);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(0, WIDTH_IMAGE, outer_distance_left, start, start + start_length_rad, false);
-        ctx.stroke();
-        //Iterate distance for next lane
-        outer_distance_left += 90
+        //start_code += code_length_rad * 1.7
+        curve.curve_code.common_data.start += code_length_rad * 1.7
+        curve.curve_code.common_data.end += code_length_rad * 1.7
+        amount_of_nub_codes--
     }
-
-    let outer_distance_middle = outer_distance_left
-
-    //Todo Workaround
-    outer_distance_left -= 90
-    //Right Side
-    ctx.beginPath();
-    ctx.lineWidth = 40
-    ctx.strokeStyle = 'black'
-    ctx.arc(0, WIDTH_IMAGE, outer_distance_left+25, end_left, end_left - ((Math.PI/2)*(100/((outer_distance_left * Math.PI) / 2))), true);
-    ctx.stroke();
-
-    for (let i=0; i<middle; i++){
-
+    return {
+        ctx: ctx,
+        counter: loc_code_counter
     }
+}
 
-    for (let j=0; j<right; j++) {
+/**
+ *
+ * @param ctx
+ * @param curve
+ * @returns {*}
+ */
 
-        //Calculate the circumference of the whole circle
-        const quarter_circumference_right = (outer_distance_right * Math.PI) / 2
+function drawCurveStartArc(ctx, curve) {
 
-        //Percentage length of the code piece
-        const code_length_percent = 76 / quarter_circumference_right
-        const code_length_rad = code_length_percent * Math.PI/2
-
-        //Percentage length of the squares at the beginning and in the end
-        const start_length_percent = (100 / quarter_circumference_right)
-        const start_length_rad = start_length_percent * Math.PI/2
-
-        //Start Position for the code pieces
-        let start_code = end_right + code_length_rad * 1.8
-
-        //Calculate how many codes will fit on the arc
-        let amount_of_codes = (quarter_circumference_right - 190) / (76*1.7)
-
-        //Calculate how many numbered codes will be on the arc
-        let amount_of_nub_codes = amount_of_codes - (amount_of_codes%8)
-
-        amount_of_codes = Math.floor(amount_of_codes)
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right, end_right, start, false);
-        ctx.stroke();
-
-
-        //Draw the codes the car reads for information
-        for (let j = 0; j < amount_of_codes; j++) {
-
-            //Get the binary string of the current location code
-            let binary_loc = loc_code_counter.toString(2).split("")
-            binary_loc.reverse()
-
-            //When the max amount of codes that carry information is drawn the rest of the codes will be drawn as the extra thick code, which signal the end of a section
-            if (amount_of_nub_codes>0){
-                //Every 8th code will signal the end of the 7 Bit long array
-                if (j % 8 === 0) {
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 16
-                    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-22, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-
-                    //Draw the code that signals the car that a new section begins
-                    ctx.beginPath();
-                    ctx.lineWidth = 4
-                    ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+13, start_code, start_code + code_length_rad, false);
-                    ctx.stroke();
-                    loc_code_counter++
-                } else {
-                    //Drawing the location ID code
-                    if (binary_loc[(j%8)-1] === "1"){
-                        //Draw the location code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw the location code for the binary value zero
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    //Drawing the track ID Code
-                    if (binary[(j%8)-1] === "1"){
-                        //draw the track id code for the binary value one
-                        ctx.beginPath();
-                        ctx.lineWidth = 10
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+16, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                    else {
-                        //Draw code at the side of the arc that the car follows
-                        ctx.beginPath();
-                        ctx.lineWidth = 4
-                        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+13, start_code, start_code + code_length_rad, false);
-                        ctx.stroke();
-                    }
-                }
-            }
-            else {
-                //Draw code at the side of the arc that the car follows
-                ctx.beginPath();
-                ctx.lineWidth = 16
-                ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-22, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.lineWidth = 4
-                ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+13, start_code, start_code + code_length_rad, false);
-                ctx.stroke();
-            }
-            start_code += code_length_rad * 1.7
-            amount_of_nub_codes--
+    for (const [key, value] of Object.entries(curve.start)) {
+        if (key !== "common_data"){
+            ctx.beginPath();
+            ctx.lineWidth = value.width
+            ctx.strokeStyle = value.color
+            ctx.arc(curve.start.common_data.cord_x, curve.start.common_data.cord_y, value.radius, value.start, value.end, value.anti_clockwise);
+            ctx.stroke();
         }
-        //Draw Squares at the Bottom
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-45, end_right, end_right + start_length_rad, false);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right, end_right, end_right + start_length_rad, false);
-        ctx.stroke();
-
-        //Draw Squares at the Top
-        //Draw Squares at the Top
-
-        //Right Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right+45, start, start - start_length_rad, true);
-        ctx.stroke();
-
-        //Left Side
-        ctx.beginPath();
-        ctx.lineWidth = 80
-        ctx.strokeStyle = 'black'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right-45, start, start - start_length_rad, true);
-        ctx.stroke();
-
-        //Middle
-        //Draw arc the car follows
-        ctx.beginPath();
-        ctx.lineWidth = 10
-        ctx.strokeStyle = 'white'
-        ctx.arc(WIDTH_IMAGE, HEIGHT_IMAGE, outer_distance_right, start, start - start_length_rad, true);
-        ctx.stroke();
-
-        //Iterate distance for next lane
-        outer_distance_right += 90
     }
-    //Todo Workaround
-    outer_distance_right -= 90
-    //Left Side
-    ctx.beginPath();
-    ctx.lineWidth = 40
-    ctx.strokeStyle = 'black'
-    ctx.arc(WIDTH_IMAGE, WIDTH_IMAGE, outer_distance_right+25, end_right, end_right + ((Math.PI/2)*(100/((outer_distance_right * Math.PI) / 2))), false);
-    ctx.stroke();
-
-    ctx.globalCompositeOperation = 'destination-over'
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const buffer = canvas.toBuffer('image/png')
-    fs.writeFileSync('./junction_with_straight_track_piece.png', buffer)
-    console.log("Finished Drawing")
+    return ctx
 }
 
-function radianToDegree(radian) {
-    return radian * (180 / Math.PI)
-}
+/**
+ *
+ * @param ctx
+ * @param curve
+ * @returns {*}
+ */
 
-function degreeToRadian(degree) {
-    return degree * (Math.PI / 180)
-}
-
-function drawRotatedRect(ctx, x, y, width, height, moveX, moveY, degrees){
-
-    // first save the untranslated/unrotated context
-    ctx.save();
-
-    //ctx.translate( x+width/2, y+height/2 );
-    ctx.translate( x, y);
-
-    ctx.rotate(degrees*Math.PI/180);
-
-    ctx.fillRect( 0, 0, 76, 4);
-    //ctx.fillRect(0, 0, width,height);
-
-    // restore the context to its untranslated/unrotated state
-    ctx.restore();
-
-}
-
-function drawStraightStartLine(direction ,ctx, start_x) {
-
-    switch (direction) {
-        case "top_down":
-            break
-        case "left_right":
-            break
+function drawCurveSideLine(ctx, curve) {
+    for (const [key, value] of Object.entries(curve.side_line)) {
+        if (key !== "common_data"){
+            ctx.beginPath();
+            ctx.lineWidth = value.width
+            ctx.strokeStyle = value.color
+            ctx.arc(curve.side_line.common_data.cord_x, curve.side_line.common_data.cord_y, value.radius, value.start, value.end, value.anti_clockwise);
+            ctx.stroke();
+        }
     }
-
-    //Draw both squares at the top
-    ctx.fillRect(start_x, 0, 80, 100)
-    ctx.fillRect(start_x + 90, 0, 80, 100)
-    //Draw both squares at the bottom
-    ctx.fillRect(start_x, HEIGHT_IMAGE - 100, 80, 100)
-    ctx.fillRect(start_x + 90, HEIGHT_IMAGE - 100, 80, 100)
-
-    //Draw the line the car follows
-    ctx.fillRect(start_x + 80, 100, 10, 4092)
-
-    //Drawing the Code at the top that tells the car where the track starts or stops
-    ctx.fillRect(start_x + 67, 132, 4, 76)
-    ctx.fillRect(start_x + 96, 132, 16, 76)
-
-    ctx.fillRect(start_x + 67, 284, 4, 76)
-    ctx.fillRect(start_x + 96, 284, 16, 76)
-
-    //Drawing the Code at the bottom that tells the car where the track starts or stops
-    ctx.fillRect(start_x + 67, HEIGHT_IMAGE - 202, 4, 76)
-    ctx.fillRect(start_x + 96, HEIGHT_IMAGE - 202, 16, 76)
-
-    ctx.fillRect(start_x + 67, HEIGHT_IMAGE - 354, 4, 76)
-    ctx.fillRect(start_x + 96, HEIGHT_IMAGE - 354, 16, 76)
-
-    //Drawing the code in the middle that tells the car where the track starts or stops
-    ctx.fillRect(start_x + 67, HEIGHT_IMAGE - ((15 * 76) + 436), 4, 76)
-    ctx.fillRect(start_x + 96, HEIGHT_IMAGE - ((15 * 76) + 436), 16, 76)
-
-    ctx.fillRect(start_x + 67, 15 * 76 + 360, 4, 76)
-    ctx.fillRect(start_x + 96, 15 * 76 + 360, 16, 76)
 
     return ctx
 }
 
-function drawStraightLineWithCodes(ctx, binary, start_x, start_y_top_track, start_y_top_location, start_y_middle_track, start_y_middle_location, start_y_bottom_track, start_y_bottom_location, lane) {
+/**
+ * CURVE Functions
+ */
+
+
+/**
+ *
+ * @param ctx
+ * @param straight
+ * @returns {*}
+ */
+
+function drawStraightStartLine(ctx, straight) {
+
+    for (const [key, value] of Object.entries(straight)) {
+        if (key !== "follow_line" && key !== "side_line"){
+            if (key !== "middle"){
+                //Draw both squares
+                ctx.fillRect(value.square.left.cord_x, value.square.left.cord_y, value.square.left.width_x, value.square.left.height_y)
+                ctx.fillRect(value.square.right.cord_x, value.square.right.cord_y, value.square.right.width_x, value.square.right.height_y)
+            }
+            //Drawing the Code that tells the car where the track starts or stops
+            ctx.fillRect(value.transition_code_1.type_1.cord_x, value.transition_code_1.type_1.cord_y, value.transition_code_1.type_1.width_x, value.transition_code_1.type_1.height_y)
+            ctx.fillRect(value.transition_code_1.type_3.cord_x, value.transition_code_1.type_3.cord_y, value.transition_code_1.type_3.width_x, value.transition_code_1.type_3.height_y)
+
+            ctx.fillRect(value.transition_code_2.type_1.cord_x, value.transition_code_2.type_1.cord_y, value.transition_code_2.type_1.width_x, value.transition_code_2.type_1.height_y)
+            ctx.fillRect(value.transition_code_2.type_3.cord_x, value.transition_code_2.type_3.cord_y, value.transition_code_2.type_3.width_x, value.transition_code_2.type_3.height_y)
+        }
+        else {
+            //Draw the line the car follows
+            ctx.fillRect(value.cord_x, value.cord_y, value.width_x, value.height_y)
+        }
+    }
+    return ctx
+}
+
+/**
+ *
+ * @param ctx
+ * @param binary
+ * @param straight
+ * @param lane
+ * @returns {*}
+ */
+
+function drawStraightLineWithCodes(ctx, binary, straight, lane) {
 
     let default_location_id_code_top = 0
     let default_location_id_code_middle = 1
     let default_location_id_code_bottom = 2
+    let loc_binary
 
-    //const track_id_code_zero_x = 48
-    const track_id_code_zero_x = 67
-    //const track_id_code_one_x = 44
-    const track_id_code_one_x = 64
-    //const location_id_code_zero_x = 80
-    const location_id_code_zero_x = 99
-    //const location_id_code_one_x = 78
-    const location_id_code_one_x = 96
+    for (const [key, value] of Object.entries(straight)) {
+        if (key !== "follow_line" && key !== "side_line"){
+            switch (key){
+                case "top":
+                    let location_code_top = default_location_id_code_top + (lane * 3)
+                    loc_binary = location_code_top.toString(2).split("").reverse()
+                    break
+                case "middle":
+                    let location_code_middle = default_location_id_code_middle + (lane * 3)
+                    loc_binary = location_code_middle.toString(2).split("").reverse()
+                    break
+                case "bottom":
+                    let location_code_bottom = default_location_id_code_bottom + (lane * 3)
+                    loc_binary = location_code_bottom.toString(2).split("").reverse()
+                    break
+            }
+            //Draw the track ids and locations ids for the track at the top
+            for (let k = 6; k >= 0; k--) {
+                if (binary[k] === '1') {
+                    ctx.fillRect(value.track_code.type_2.cord_x, value.track_code.common_data.cord_y, value.track_code.type_2.width_x, value.track_code.type_2.height_y)
+                } else {
+                    ctx.fillRect(value.track_code.type_1.cord_x, value.track_code.common_data.cord_y, value.track_code.type_1.width_x, value.track_code.type_1.height_y)
+                }
+                value.track_code.common_data.cord_y += 152
+            }
 
-    //Draw the track ids and locations ids for the track at the top
-    for (let k = 6; k >= 0; k--) {
-        if (binary[k] === '1') {
-            ctx.fillRect(start_x + track_id_code_one_x, start_y_top_track, 10, 76)
-        } else {
-            ctx.fillRect(start_x + track_id_code_zero_x, start_y_top_track, 4, 76)
+            for (let k = 6; k >= 0; k--) {
+                if (loc_binary[k] === '1') {
+                    ctx.fillRect(value.location_code.type_2.cord_x, value.location_code.common_data.cord_y, value.location_code.type_2.width_x, value.location_code.type_2.height_y)
+                } else {
+                    ctx.fillRect(value.location_code.type_1.cord_x, value.location_code.common_data.cord_y, value.location_code.type_1.width_x, value.location_code.type_1.height_y)
+                }
+                value.location_code.common_data.cord_y += 152
+            }
+
         }
-        start_y_top_track += 152
     }
-
-    let location_code_top = default_location_id_code_top + (lane * 3)
-    //let location_code_top = default_location_id_code_top + (3 * 3)
-    let loc_binary_top = location_code_top.toString(2).split("").reverse()
-    for (let k = 6; k >= 0; k--) {
-        if (loc_binary_top[k] === '1') {
-            ctx.fillRect(start_x + location_id_code_one_x, start_y_top_location, 10, 76)
-        } else {
-            ctx.fillRect(start_x + location_id_code_zero_x, start_y_top_location, 4, 76)
-        }
-        start_y_top_location += 152
-    }
-
-    //Draw the track ids and locations ids for the track in the middle
-    for (let k = 6; k >= 0; k--) {
-        if (binary[k] === '1') {
-            ctx.fillRect(start_x + track_id_code_one_x, start_y_middle_track, 10, 76)
-        } else {
-            ctx.fillRect(start_x + track_id_code_zero_x, start_y_middle_track, 4, 76)
-        }
-        start_y_middle_track += 152
-    }
-    let location_code_middle = default_location_id_code_middle + (lane * 3)
-    //let location_code_middle = default_location_id_code_middle + (3 * 3)
-    let loc_binary_middle = location_code_middle.toString(2).split("").reverse()
-    for (let k = 6; k >= 0; k--) {
-        if (loc_binary_middle[k] === '1') {
-            ctx.fillRect(start_x + location_id_code_one_x, start_y_middle_location, 10, 76)
-        } else {
-            ctx.fillRect(start_x + location_id_code_zero_x, start_y_middle_location, 4, 76)
-        }
-        start_y_middle_location += 152
-    }
-
-    //Draw the track ids and locations ids for the track at the bottom
-    for (let k = 6; k >= 0; k--) {
-        if (binary[k] === '1') {
-            ctx.fillRect(start_x + track_id_code_one_x, start_y_bottom_track, 10, 76)
-        } else {
-            ctx.fillRect(start_x + track_id_code_zero_x, start_y_bottom_track, 4, 76)
-        }
-        start_y_bottom_track += 152
-    }
-    let location_code_bottom = default_location_id_code_bottom + (lane * 3)
-    //let location_code_bottom = default_location_id_code_bottom + (3 * 3)
-    let loc_binary_bottom = location_code_bottom.toString(2).split("").reverse()
-    for (let k = 6; k >= 0; k--) {
-        if (loc_binary_bottom[k] === '1') {
-            ctx.fillRect(start_x + location_id_code_one_x, start_y_bottom_location, 10, 76)
-        } else {
-            ctx.fillRect(start_x + location_id_code_zero_x, start_y_bottom_location, 4, 76)
-        }
-        start_y_bottom_location += 152
-    }
-    return ctx
-}
-
-function drawStraightSideLines(ctx, start_x, x) {
-    //Draw the inner Sideline
-    ctx.fillRect(start_x + 154, 100, 16, 4092)
-    ctx.fillRect(x, 100, 16, 4092)
-
-    //Draw 2nd inner Sideline
-    ctx.fillRect(start_x + 185, 100, 3, 4092)
-    ctx.fillRect(x - 18, 100, 3, 4092)
-
-    //Draw 3nd inner Sideline
-    ctx.fillRect(start_x + 193, 100, 22, 4092)
-    ctx.fillRect(x - 45, 100, 22, 4092)
-
-    //Draw 3nd outer Sideline
-    ctx.fillRect(start_x + 238, 100, 22, 4092)
-    ctx.fillRect(x - 90, 100, 22, 4092)
-
-    //Draw 2nd outer Sideline
-    ctx.fillRect(start_x + 270, 100, 3, 4092)
-    ctx.fillRect(x - 103, 100, 3, 4092)
-
-    //Draw the outer Sideline
-    ctx.fillRect(start_x + 278, 100, 20, 4092)
-    ctx.fillRect(x - 128, 100, 20, 4092)
-
-    //Draw 3 side line squares at the top
-    ctx.fillRect(start_x + 180, 0, 80, 100)
-    ctx.fillRect(x - 90, 0, 80, 100)
-
-    ctx.fillRect(start_x + 270, 0, 28, 100)
-    ctx.fillRect(x - 128, 0, 28, 100)
-
-    //Draw 3 side line squares at the bottom
-    ctx.fillRect(start_x + 180, HEIGHT_IMAGE - 100, 80, 100)
-    ctx.fillRect(x - 90, HEIGHT_IMAGE - 100, 80, 100)
-
-    ctx.fillRect(start_x + 270, HEIGHT_IMAGE - 100, 28, 100)
-    ctx.fillRect(x - 128, HEIGHT_IMAGE - 100, 28, 100)
 
     return ctx
 }
 
-exports.drawTrackPiece = function drawTrackPiece(type, track_id, lanes, left, right){
+/**
+ *
+ * @param ctx
+ * @param straight
+ * @returns {*}
+ */
+
+function drawStraightSideLines(ctx, straight) {
+    //
+    for (const [key, value] of Object.entries(straight.side_line.lines)) {
+        if (key !== "common_data"){
+            //Draw the Sideline
+            ctx.fillRect(value.left.cord_x, straight.side_line.lines.common_data.cord_y, value.left.width_x, straight.side_line.lines.common_data.height_y)
+            ctx.fillRect(value.right.cord_x, straight.side_line.lines.common_data.cord_y, value.right.width_x,straight.side_line.lines.common_data.height_y)
+        }
+    }
+    //
+    for (const [key, value] of Object.entries(straight.side_line.square)) {
+        if (key !== "common_data"){
+            //Draw 3 side line squares at the top
+            ctx.fillRect(straight.side_line.square.common_data.first.cord_x, value.cord_y, straight.side_line.square.common_data.first.width_x, straight.side_line.square.common_data.height_y)
+            ctx.fillRect(straight.side_line.square.common_data.second.cord_x, value.cord_y, straight.side_line.square.common_data.second.width_x, straight.side_line.square.common_data.height_y)
+
+            ctx.fillRect(straight.side_line.square.common_data.third.cord_x, value.cord_y, straight.side_line.square.common_data.third.width_x, straight.side_line.square.common_data.height_y)
+            ctx.fillRect(straight.side_line.square.common_data.fourth.cord_x, value.cord_y, straight.side_line.square.common_data.fourth.width_x, straight.side_line.square.common_data.height_y)
+        }
+    }
+
+    return ctx
+}
+
+/**
+ * INTERSECTION Functions
+ */
+
+/**
+ *
+ * @param ctx
+ * @param intersection
+ * @param binary
+ * @returns {*}
+ */
+
+function drawIntersectionStartLineWithCode(ctx, intersection, binary) {
+
+    for (const [key, value] of Object.entries(intersection)) {
+        if (key !== "connection_left_right" && key !== "connection_bottom_top") {
+            //Draw both squares
+            ctx.fillRect(value.square.cord_x_1, value.square.cord_y_1, value.square.width_x, value.square.height_y)
+            ctx.fillRect(value.square.cord_x_2, value.square.cord_y_2, value.square.width_x, value.square.height_y)
+            //Draw the lines for the car to follow
+            ctx.fillRect(value.line.cord_x, value.line.cord_y, value.line.width_x, value.line.height_y)
+
+            //Draw the codes for the track_id and location_id
+            for (let i = 0; i < 4; i++) {
+                if (binary[i] === "1") {
+                    ctx.fillRect(value.code.track.bin_1.cord_x, value.code.track.bin_1.cord_y, value.code.track.bin_1.width_x, value.code.track.bin_1.height_y)
+                } else {
+                    ctx.fillRect(value.code.track.bin_0.cord_x, value.code.track.bin_0.cord_y, value.code.track.bin_0.width_x, value.code.track.bin_0.height_y)
+                }
+                ctx.fillRect(value.code.location.cord_x, value.code.location.cord_y, value.code.location.width_x, value.code.location.height_y)
+                switch (key) {
+                    case "top":
+                        value.code.track.bin_1.cord_y += 152
+                        value.code.track.bin_0.cord_y += 152
+                        value.code.location.cord_y += 152
+                        break
+                    case "bottom":
+                        value.code.track.bin_1.cord_y -= 152
+                        value.code.track.bin_0.cord_y -= 152
+                        value.code.location.cord_y -= 152
+                        break
+                    case "left":
+                        value.code.track.bin_1.cord_x += 152
+                        value.code.track.bin_0.cord_x += 152
+                        value.code.location.cord_x += 152
+                        break
+                    case "right":
+                        value.code.track.bin_1.cord_x -= 152
+                        value.code.track.bin_0.cord_x -= 152
+                        value.code.location.cord_x -= 152
+                        break
+                }
+            }
+        }
+    }
+    return ctx
+}
+
+/**
+ *
+ * @param ctx
+ * @param intersection
+ * @returns {*}
+ */
+
+function drawIntersectionLineWithIntersectionCode(ctx, intersection) {
+
+    for (const [key, value] of Object.entries(intersection)) {
+        /**
+         * Drawing the 3 codes that tell the car that the current track a intersection is and where it is
+         */
+        if (key === "connection_left_right" || key === "connection_bottom_top") {
+            //Draw connection line between left and right intersection code
+            ctx.fillRect(value.cord_x, value.cord_y, value.width_x, value.height_y)
+        } else {
+            //Drawing the intersection code at the bottom
+            value.intersection_code.bottom.diff_arr.forEach((diff, index) => {
+                if (key === "bottom" || key === "top") {
+                    ctx.fillRect(value.intersection_code.bottom.cord_x + diff, value.intersection_code.bottom.cord_y, value.intersection_code.bottom.width_x_main, value.intersection_code.bottom.height_y)
+                } else {
+                    ctx.fillRect(value.intersection_code.bottom.cord_x, value.intersection_code.bottom.cord_y + diff, value.intersection_code.bottom.height_y, value.intersection_code.bottom.width_x_main)
+                }
+            })
+
+            //Drawing the intersection code in the middle
+            value.intersection_code.middle.diff_arr.forEach((diff, index) => {
+                if (key === "bottom" || key === "top") {
+                    if (index === 2) {
+                        ctx.fillRect(value.intersection_code.middle.cord_x + diff, value.intersection_code.middle.cord_y, value.intersection_code.middle.width_x_main, value.intersection_code.middle.height_y)
+                    } else {
+                        ctx.fillRect(value.intersection_code.middle.cord_x + diff, value.intersection_code.middle.cord_y, value.intersection_code.middle.width_x_side, value.intersection_code.middle.height_y)
+                    }
+                } else {
+                    if (index === 2) {
+                        ctx.fillRect(value.intersection_code.middle.cord_x, value.intersection_code.middle.cord_y + diff, value.intersection_code.middle.height_y, value.intersection_code.middle.width_x_main)
+                    } else {
+                        ctx.fillRect(value.intersection_code.middle.cord_x, value.intersection_code.middle.cord_y + diff, value.intersection_code.middle.height_y, value.intersection_code.middle.width_x_side)
+                    }
+                }
+            })
+
+            //Drawing the intersection code at the top
+            value.intersection_code.top.diff_arr.forEach((diff, index) => {
+                if (key === "bottom" || key === "top") {
+                    ctx.fillRect(value.intersection_code.top.cord_x + diff, value.intersection_code.top.cord_y, value.intersection_code.top.width_x_main, value.intersection_code.top.height_y)
+                } else {
+                    ctx.fillRect(value.intersection_code.top.cord_x, value.intersection_code.top.cord_y + diff, value.intersection_code.top.height_y, value.intersection_code.top.width_x_main)
+                }
+            })
+            //Draw connection line between top and middle
+            ctx.fillRect(value.intersection_code.line_1.cord_x, value.intersection_code.line_1.cord_y, value.intersection_code.line_1.width_x, value.intersection_code.line_1.height_y)
+            //Draw connection line between middle and bottom
+            ctx.fillRect(value.intersection_code.line_2.cord_x, value.intersection_code.line_2.cord_y, value.intersection_code.line_2.width_x, value.intersection_code.line_2.height_y)
+        }
+    }
+    return ctx
+}
+
+/**
+ * JUNCTION Functions
+ */
+
+/**
+ *
+ * @param ctx
+ * @param direction
+ * @param num
+ * @param outer_distance
+ * @param start
+ * @param end
+ * @param loc_code_counter
+ * @param binary
+ * @returns {{ctx, counter}}
+ */
+
+function drawJunctionArc(ctx, direction, num, outer_distance, start, end, loc_code_counter, binary) {
+    for (let i = 0; i < num; i++) {
+
+        //Calculate the circumference of the whole circle
+        const quarter_circumference = (outer_distance * Math.PI) / 2
+
+        //Percentage length of the code piece
+        const code_length_percent = (76 / quarter_circumference)
+        const code_length_rad = code_length_percent * Math.PI / 2
+
+        //Percentage length of the squares at the beginning and in the end
+        const start_length_percent = (100 / quarter_circumference)
+        const start_length_rad = start_length_percent * Math.PI / 2
+
+        //Start Position for the code pieces
+        let start_code = start + code_length_rad * 1.8
+
+        let junction_direction
+        let junction = junction_track_piece_code_conf(outer_distance, start_code, code_length_rad)
+
+        switch (direction) {
+            case "left":
+                junction_direction = junction_track_piece_conf_left(outer_distance, end, start, start_length_rad)
+                drawJunctionStartArc(ctx, junction_direction)
+                break
+            case "right":
+                junction_direction = junction_track_piece_conf_right(outer_distance, end, start, start_length_rad)
+                drawJunctionStartArc(ctx, junction_direction)
+                break
+        }
+
+        //Calculate how many codes will fit on the arc
+        let amount_of_codes = (quarter_circumference - 190) / (76 * 1.7)
+
+        //Calculate how many numbered codes will be on the arc
+        let amount_of_nub_codes = amount_of_codes - (amount_of_codes % 8)
+
+        amount_of_codes = Math.floor(amount_of_codes)
+
+        //Draw the codes the car reads for information
+        for (let j = 0; j < amount_of_codes; j++) {
+
+            ctx.strokeStyle = "black"
+
+            //Get the binary string of the current location code
+            let binary_loc = (loc_code_counter >>> 0).toString(2).split("");
+            binary_loc.reverse()
+
+            //When the max amount of codes that carry information is drawn the rest of the codes will be drawn as the extra thick code, which signal the end of a section
+            if (amount_of_nub_codes > 0) {
+                //Every 8th code will signal the end of the 7 Bit long array
+                if (j % 8 === 0) {
+                    //Draw the code that signals the car that a new section begins
+                    ctx.beginPath();
+                    ctx.strokeStyle = "black"
+                    ctx.lineWidth = junction.junction_code.transition.type_3.width
+                    ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.transition.type_3.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                    ctx.stroke();
+
+                    //Draw the code that signals the car that a new section begins
+                    ctx.beginPath();
+                    ctx.strokeStyle = "black"
+                    ctx.lineWidth = junction.junction_code.transition.type_1.width
+                    ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.transition.type_1.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                    ctx.stroke();
+                    loc_code_counter++
+                } else {
+                    //Drawing the location ID code
+                    if (binary_loc[(j % 8) - 1] === "1") {
+                        //Draw the location code for the binary value one
+                        ctx.beginPath();
+                        ctx.strokeStyle = "black"
+                        ctx.lineWidth = junction.junction_code.location.type_2.width
+                        ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.location.type_2.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                        ctx.stroke();
+                    } else {
+                        //Draw the location code for the binary value zero
+                        ctx.beginPath();
+                        ctx.strokeStyle = "black"
+                        ctx.lineWidth = junction.junction_code.location.type_1.width
+                        ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.location.type_1.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                        ctx.stroke();
+                    }
+                    //Drawing the track ID Code
+                    if (binary[(j % 8) - 1] === "1") {
+                        //draw the track id code for the binary value one
+                        ctx.beginPath();
+                        ctx.strokeStyle = "black"
+                        ctx.lineWidth = junction.junction_code.track.type_2.width
+                        ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.track.type_2.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                        ctx.stroke();
+                    } else {
+                        //Draw code at the side of the arc that the car follows
+                        ctx.beginPath();
+                        ctx.strokeStyle = "black"
+                        ctx.lineWidth = junction.junction_code.track.type_1.width
+                        ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.track.type_1.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                        ctx.stroke();
+                    }
+                }
+            } else {
+                //Draw code at the side of the arc that the car follows
+                ctx.beginPath();
+                ctx.strokeStyle = "black"
+                ctx.lineWidth = junction.junction_code.transition.type_3.width
+                ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.transition.type_3.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.strokeStyle = "black"
+                ctx.lineWidth = junction.junction_code.transition.type_1.width
+                ctx.arc(junction_direction.start.common_data.cord_x, junction.junction_code.common_data.cord_y, junction.junction_code.transition.type_1.radius, junction.junction_code.common_data.start, junction.junction_code.common_data.end, junction.junction_code.common_data.anti_clockwise);
+                ctx.stroke();
+            }
+            //start_code += code_length_rad * 1.7
+            junction.junction_code.common_data.start += code_length_rad * 1.7
+            junction.junction_code.common_data.end += code_length_rad * 1.7
+            amount_of_nub_codes--
+        }
+        outer_distance+=90
+    }
+    return {
+        ctx: ctx,
+        counter: loc_code_counter
+    }
+}
+
+/**
+ *
+ * @param ctx
+ * @param junction
+ * @returns {*}
+ */
+
+function drawJunctionStartArc(ctx, junction) {
+
+    for (const [key, value] of Object.entries(junction.start)) {
+        if (key !== "common_data"){
+            ctx.beginPath();
+            ctx.lineWidth = value.width
+            ctx.strokeStyle = value.color
+            ctx.arc(junction.start.common_data.cord_x, junction.start.common_data.cord_y, value.radius, value.start, value.end, value.anti_clockwise);
+            ctx.stroke();
+        }
+    }
+    return ctx
+}
+
+/**
+ *
+ * @param ctx
+ * @param junction
+ * @returns {*}
+ */
+
+function drawJunctionSideLine(ctx, junction) {
+    for (const [key, value] of Object.entries(junction.side_line)) {
+        if (key !== "common_data"){
+            ctx.beginPath();
+            ctx.lineWidth = value.width
+            ctx.strokeStyle = value.color
+            ctx.arc(value.cord_x, junction.side_line.common_data.cord_y, value.radius, value.start, value.end, value.anti_clockwise);
+            ctx.stroke();
+        }
+    }
+
+    return ctx
+}
+
+/**
+ *
+ */
+
+exports.drawTrackPiece = function drawTrackPiece(type, track_id, lanes, left, right) {
     let data
     switch (type) {
         case "straight":
@@ -1789,18 +822,21 @@ exports.drawTrackPiece = function drawTrackPiece(type, track_id, lanes, left, ri
     return data
 }
 
+/**
+ *
+ */
+
 exports.drawImage = async function drawImage(grid_items, rows, cols) {
-    let canvas = createCanvas(WIDTH_IMAGE/2 * rows, HEIGHT_IMAGE/2 * cols)
+    let canvas = createCanvas(WIDTH_IMAGE / 2 * rows, HEIGHT_IMAGE / 2 * cols)
     let ctx = canvas.getContext('2d')
     let buffer
 
-    for (let grid of grid_items){
+    for (let grid of grid_items) {
         const grid_data = await mongoController.findTrack(grid.item.track_id, grid.type, grid.item.lanes)
-        if (grid_data !== null){
+        if (grid_data !== null) {
             buffer = grid_data.Data
             console.log(buffer)
-        }
-        else {
+        } else {
             buffer = require('./imageGeneratorController').drawTrackPiece(grid.type, grid.item.track_id, grid.item.lanes, grid.item.left, grid.item.right)
         }
         let degree
@@ -1821,12 +857,11 @@ exports.drawImage = async function drawImage(grid_items, rows, cols) {
 
         loadImage(buffer).then((image) => {
             ctx.save()
-            ctx.translate(((grid.item.x + 1) * WIDTH_IMAGE/2) - 1073, ((grid.item.y + 1) * HEIGHT_IMAGE/2) - 1073);
+            ctx.translate(((grid.item.x + 1) * WIDTH_IMAGE / 2) - 1073, ((grid.item.y + 1) * HEIGHT_IMAGE / 2) - 1073);
             ctx.rotate(degree);
-            ctx.drawImage(image, -1073, -1073, WIDTH_IMAGE/2, HEIGHT_IMAGE/2)
+            ctx.drawImage(image, -1073, -1073, WIDTH_IMAGE / 2, HEIGHT_IMAGE / 2)
             ctx.restore()
         })
     }
     return canvas
 }
-

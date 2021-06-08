@@ -3,6 +3,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose');
 let routes = require('./api/routes/rest_routes.js')
+const env = require('./env/env.js')
 
 const db = mongoose.connection
 
