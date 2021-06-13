@@ -157,7 +157,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             outer_square_bottom_right: {
-                radius: outer_distance + 45,
+                radius: outer_distance +90 + 45,
                 start: end,
                 end: end - ((Math.PI / 2) * (100 / ((outer_distance * Math.PI) / 2))),
                 anti_clockwise: true,
@@ -165,7 +165,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             outer_square_top_right: {
-                radius: outer_distance + 45,
+                radius: outer_distance +90 + 45,
                 start: start,
                 end: start + ((Math.PI / 2) * (100 / ((outer_distance * Math.PI) / 2))),
                 anti_clockwise: false,
@@ -173,7 +173,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             inner_outline_right: {
-                radius: outer_distance - 20,
+                radius: outer_distance +90 - 20,
                 start: end,
                 end: start,
                 anti_clockwise: true,
@@ -181,7 +181,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             inner_outline_2_right: {
-                radius: outer_distance - 1,
+                radius: outer_distance +90 - 1,
                 start: end - ((Math.PI / 2) * (100 / ((outer_distance * Math.PI) / 2))),
                 end: start + ((Math.PI / 2) * (100 / ((outer_distance * Math.PI) / 2))),
                 anti_clockwise: true,
@@ -189,7 +189,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             inner_outline_3_right: {
-                radius: outer_distance + 15,
+                radius: outer_distance +90 + 15,
                 start: end,
                 end: start,
                 anti_clockwise: true,
@@ -197,7 +197,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             outer_outline_3_right: {
-                radius: outer_distance + 74,
+                radius: outer_distance +90 + 74,
                 start: end,
                 end: start,
                 anti_clockwise: true,
@@ -205,7 +205,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             outer_outline_2_right: {
-                radius: outer_distance + 93,
+                radius: outer_distance +90 + 93,
                 start: end - ((Math.PI / 2) * (100 / ((outer_distance * Math.PI) / 2))),
                 end: start + ((Math.PI / 2) * (100 / ((outer_distance * Math.PI) / 2))),
                 anti_clockwise: true,
@@ -213,7 +213,7 @@ exports.curve_track_piece = function (start, end, outer_distance, outer_distance
                 color: "black"
             },
             outer_outline_right: {
-                radius: outer_distance + 110,
+                radius: outer_distance +90 + 110,
                 start: end,
                 end: start,
                 anti_clockwise: true,

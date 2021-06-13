@@ -132,8 +132,9 @@ function drawCurveTrack(track_id, lanes) {
     let outer_distance_sideline = outer_distance
     let loc_code_counter = -1
 
-    for (let i = 0; i < lanes; i++) {
 
+    for (let i = 0; i < lanes; i++) {
+        console.log(i)
         //Calculate the circumference of the whole circle
         const quarter_circumference = (outer_distance * Math.PI) / 2
 
