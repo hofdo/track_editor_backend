@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test_cases/index.test.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +13,7 @@
     "abacus": "^0.2.4",
     "body-parser": "^1.19.0",
     "canvas": "^2.7.0",
+    "chai": "^4.3.4",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "express-ws": "^4.0.0",
@@ -21,6 +22,7 @@
     "feathers-socketio": "^2.0.1",
     "gm": "^1.23.1",
     "join-images": "^0.2.5",
+    "mocha": "^9.0.0",
     "mongodb": "^3.6.7",
     "mqtt": "^4.2.6",
     "socket.io": "^4.0.1",
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "cors": "^2.8.5",
+    "jest": "^27.0.4",
     "mongoose": "^5.12.10"
   }
 }
